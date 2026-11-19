@@ -6,7 +6,7 @@
 
 | 组件 | 用途 | 许可证文件 |
 | --- | --- | --- |
-| [MinHook v1.3.4](https://github.com/TsudaKageyu/minhook/tree/v1.3.4) | 原生函数挂钩，包含HDE指令解码器 | [MinHook-BSD.txt](licenses/MinHook-BSD.txt)、[源码许可](source/vendor/minhook/LICENSE.txt) |
+| [MinHook v1.3.4](https://github.com/TsudaKageyu/minhook/tree/v1.3.4) | 原生函数挂钩，包含HDE指令解码器 | [MinHook-BSD.txt](licenses/MinHook-BSD.txt)、[上游许可](https://github.com/TsudaKageyu/minhook/blob/v1.3.4/LICENSE.txt) |
 | LLVM libc++、libc++abi、libunwind | Zig 0.13.0提供的C++运行库 | [libc++](licenses/LLVM-libcxx-LICENSE.txt)、[libc++abi](licenses/LLVM-libcxxabi-LICENSE.txt)、[libunwind](licenses/LLVM-libunwind-LICENSE.txt)：Apache-2.0附LLVM例外及文件内的其他通知 |
 | MinGW-w64 | Windows目标运行库支持 | [mingw-w64-COPYING.txt](licenses/mingw-w64-COPYING.txt)，包括其中列明的例外 |
 | Microsoft .NET Framework、Windows API | 系统界面与进程操作接口 | 使用Windows已安装的系统组件 |

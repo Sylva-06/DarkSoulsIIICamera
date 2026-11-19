@@ -13,11 +13,17 @@
 - 可修改按键、移动／转向速度、鼠标灵敏度、平滑响应和加速／减速倍率。
 - 客户端断开或失去心跳后恢复本工具接管的状态。
 
+## 下载与使用
+
+从 [Releases](https://github.com/Sylva-06/DarkSoulsIIICamera/releases/latest) 下载 `DarkSoulsIIICamera-v1.0.0-win-x64.zip`，完整解压到可写目录后运行 `DS3CameraClient.exe`。
+
+运行包包含EXE、DLL、默认配置及许可证，不需要安装Cheat Engine，也不需要下载源码。
+
 ## 环境与启动
 
 - Windows x64，.NET Framework 4.x。
 - DarkSoulsIII.exe版本 **1.15.2.0**，仅离线使用。
-- 先通过你的游戏／模组启动配置进入可操作场景，再打开构建目录内的DS3CameraClient.exe，点击“注入相机”。
+- 先通过你的游戏／模组启动配置进入可操作场景，再打开DS3CameraClient.exe，点击“注入相机”。
 - 本工具不负责启动游戏，也不会自动切换独立存档；存档由游戏启动配置决定。
 - 已通过Mod Engine 2实测。与其他镜头、HUD或时间控制模组一起使用时，请检查功能是否冲突。
 
