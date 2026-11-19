@@ -17,7 +17,7 @@
 
 也可以设置环境变量DS3_CAMERA_ZIG，或将正确版本的zig.exe加入PATH。脚本会检查版本。默认输出到build/；可用-OutputDirectory指定其他输出位置。
 
-主要输出：DS3CameraClient.exe、DS3CameraCore.dll、首次生成的camera-settings.xml、licenses/和THIRD-PARTY-NOTICES.md。重建不会覆盖输出目录已有的个人配置。更新DLL前请先退出加载它的游戏。
+主要输出：DS3CameraClient.exe、DS3CameraCore.dll、首次生成的camera-settings.xml、LICENSE、licenses/和THIRD-PARTY-NOTICES.md。重建不会覆盖输出目录已有的个人配置。更新DLL前请先退出加载它的游戏。
 
 ## 仅构建前端／外观预览
 

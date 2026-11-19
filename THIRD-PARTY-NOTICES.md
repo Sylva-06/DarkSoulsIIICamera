@@ -1,6 +1,6 @@
 # Third-party notices and provenance
 
-This document records dependencies and development references. It is not a license grant for the project's own code, any game, or any proprietary camera tool. Third-party notices retain their original terms.
+This document records dependencies and development references. The project's own code is offered under the MIT License in the root LICENSE file. Third-party files retain their original copyright notices and license terms; the project's license does not relicense those files, any game, or any proprietary camera tool.
 
 ## Shipped dependencies
 

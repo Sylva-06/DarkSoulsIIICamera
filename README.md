@@ -2,7 +2,7 @@
 
 魂3离线摄影相机。使用独立Windows设置界面，将相机控制DLL加载到已运行的游戏进程，支持中文界面和游戏内快捷键。
 
-维护账号：[Sylva-06](https://github.com/Sylva-06)。这是个人维护仓库；本项目自己的开源许可证尚未确定。第三方文件依各自许可证保留，见[第三方声明](THIRD-PARTY-NOTICES.md)和[licenses](licenses/)。
+维护账号：[Sylva-06](https://github.com/Sylva-06)。本项目自行编写的代码采用 [MIT License](LICENSE)，版权署名为 Copyright (c) 2026 Sylva-06。第三方文件继续适用各自许可证，见[第三方声明](THIRD-PARTY-NOTICES.md)和[licenses](licenses/)。仓库当前保持私有。
 
 ## 功能
 

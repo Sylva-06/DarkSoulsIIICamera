@@ -14,4 +14,5 @@ $config = Join-Path $OutputDirectory 'camera-settings.xml'
 if (!(Test-Path -LiteralPath $config)) { Copy-Item -LiteralPath (Join-Path $repositoryRoot 'camera-settings.example.xml') -Destination $config }
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'licenses') -Destination $OutputDirectory -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'THIRD-PARTY-NOTICES.md') -Destination $OutputDirectory -Force
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination $OutputDirectory -Force
 Write-Output "Built frontend in $OutputDirectory; camera DLL unchanged."
