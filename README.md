@@ -17,8 +17,6 @@
 
 从 [Releases](https://github.com/Sylva-06/DarkSoulsIIICamera/releases/latest) 下载 `DarkSoulsIIICamera-v1.0.0-win-x64.zip`，完整解压到可写目录后运行 `DS3CameraClient.exe`。
 
-运行包包含EXE、DLL、默认配置及许可证，不需要安装Cheat Engine，也不需要下载源码。
-
 ## 环境与启动
 
 - Windows x64，.NET Framework 4.x。
@@ -28,6 +26,13 @@
 - 已通过Mod Engine 2实测。与其他镜头、HUD或时间控制模组一起使用时，请检查功能是否冲突。
 
 ## 默认按键
+
+![默认按键示意图](docs/images/default-keybindings.png)
+
+按键可在程序的“按键设置”中修改。
+
+<details>
+<summary>查看文字按键表</summary>
 
 | 按键 | 功能 |
 | --- | --- |
@@ -43,8 +48,8 @@
 | 鼠标／方向键／滚轮 | 转向／转向／调整视野 |
 | F12 | 保留给Steam截图 |
 
-默认键盘图和使用流程在程序的“操作说明”中，自定义按键以“按键设置”为准。
+</details>
 
 ## 开发
 
-参见[BUILDING.md](BUILDING.md)。源码在source/；build/为本地构建输出，不提交到仓库。运行配置以camera-settings.example.xml为默认模板，用户自己的camera-settings.xml不提交。
+构建方法见[BUILDING.md](BUILDING.md)。

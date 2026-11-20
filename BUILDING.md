@@ -55,6 +55,12 @@ Start-Process .\build\DS3CameraClient.exe -ArgumentList '--ui-check' -Wait
 
 输出到build/preview/。游戏内测试请自行通过原来的模组启动方式离线进入场景，再点击注入。
 
+## 项目目录
+
+- `source/`：程序源码。
+- `build/`：本地构建输出。
+- `camera-settings.example.xml`：默认配置模板；运行配置为构建目录中的 `camera-settings.xml`。
+
 ## 维护约定
 
 - 小改动验证受影响范围；相机算法、DLL或通信协议变更需要相关回归检查。
