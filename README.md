@@ -1,5 +1,7 @@
 # Dark Souls III Camera · 黑暗之魂Ⅲ摄影工具
 
+<img src="source/assets/camera-icon.png" width="96" height="96" alt="Dark Souls III Camera 图标">
+
 魂3离线摄影相机。使用独立Windows设置界面，将相机控制DLL加载到已运行的游戏进程，支持中文界面和游戏内快捷键。
 
 作者：[Sylva-06](https://github.com/Sylva-06) · [MIT License](LICENSE) · [第三方声明与致谢](THIRD-PARTY-NOTICES.md)

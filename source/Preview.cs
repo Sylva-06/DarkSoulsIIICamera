@@ -16,6 +16,7 @@ public class PreviewForm:Form {
  readonly string[] pages={"连接与注入","按键设置","速度与手感","UI、暂停与竖屏","操作说明","注意事项"};
  [DllImport("user32.dll")]static extern bool ReleaseCapture();[DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr handle,int message,IntPtr wParam,IntPtr lParam);
  public PreviewForm(){
+  Icon=Icon.ExtractAssociatedIcon(Application.ExecutablePath);
   Text="Dark Souls III Camera · 黑暗之魂Ⅲ摄影工具";FormBorderStyle=FormBorderStyle.None;AutoScaleMode=AutoScaleMode.None;ClientSize=new Size(D(1200),D(800));MinimumSize=new Size(D(1000),D(710));StartPosition=FormStartPosition.CenterScreen;BackColor=background;ForeColor=Color.White;Font=new Font("Microsoft YaHei UI",12);DoubleBuffered=true;
   try{settings=Settings.Load(Path.Combine(Log.Root,"camera-settings.xml"));}catch(Exception e){loadError="配置读取失败，原文件保留："+e.Message;settings=new Settings();}
   title=new PreviewDpiPanel(dpi){BackColor=Color.Black};nav=new PreviewDpiPanel(dpi){BackColor=sidebar};content=new PreviewDpiPanel(dpi){BackColor=background,AutoScroll=true};footer=new PreviewDpiPanel(dpi){BackColor=Color.FromArgb(28,28,28)};

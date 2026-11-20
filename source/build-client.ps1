@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'data') -Force | 
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 if (!(Test-Path -LiteralPath $compiler)) { throw '.NET Framework 4.x compiler is required on Windows x64.' }
 $sourceFiles = @('Native.cs','InputCapture.cs','Settings.cs','Bridge.cs','Client.cs','Preview.cs','PreviewDpi.cs','KeyboardMap.cs','Tests.cs') | ForEach-Object { Join-Path $PSScriptRoot $_ }
-& $compiler /nologo /target:winexe /platform:x64 /optimize+ /codepage:65001 "/out:$OutputDirectory/DS3CameraClient.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Xml.dll $sourceFiles
+& $compiler /nologo /target:winexe /platform:x64 /optimize+ /codepage:65001 "/win32icon:$PSScriptRoot/assets/camera-icon.ico" "/out:$OutputDirectory/DS3CameraClient.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Xml.dll $sourceFiles
 if ($LASTEXITCODE -ne 0) { throw "Client build failed: $LASTEXITCODE" }
 $config = Join-Path $OutputDirectory 'camera-settings.xml'
 if (!(Test-Path -LiteralPath $config)) { Copy-Item -LiteralPath (Join-Path $repositoryRoot 'camera-settings.example.xml') -Destination $config }
