@@ -68,21 +68,20 @@ public class PreviewForm:Form {
    if(!showHelpSteps)content.Controls.Add(new KeyboardMap{Location=new Point(34,143)});
    else{
     AddLabel(content,"开始拍摄",34,157,820,32,15,Color.White);AddLabel(content,"1. 启动游戏，进入可操作的场景。\n2. 在连接与注入页面点击“注入相机”。\n3. 按 Insert 开启自由镜头。",34,204,820,99,12,Color.White);
-    AddLabel(content,"拍摄中",34,334,820,32,15,Color.White);AddLabel(content,"Delete 隐藏游戏界面；小键盘 0 暂停或继续。\nF9 切换战斗减速；小键盘 . 按住加速镜头。\nF6 切换横屏与竖屏；F5 重置到人物附近。",34,380,820,99,12,Color.White);
-    AddLabel(content,"结束拍摄",34,507,820,32,15,Color.White);AddLabel(content,"按 Insert 关闭相机，并恢复游戏界面与正常时间。",34,552,820,42,12,Color.White);
-    AddLabel(content,"操作补充",34,620,820,32,15,Color.White);
-    AddLabel(content,"按键设置：选中操作，修改绑定后保存并应用。\n减速影响人物与首领，相机移动和转向速度保持不变。\n暂停后继续游戏，会保留此前的减速状态。\n鼠标与左右平移按眼前画面操作；小键盘 7 / 9 沿世界竖直方向升降。\nF5 回到人物附近并恢复横屏；竖屏截图或录像后，将画面反向旋转 90°。\nF12 使用 Steam 截图。",34,665,820,205,12,Color.White);
+    AddLabel(content,"结束拍摄",34,334,820,32,15,Color.White);AddLabel(content,"按 Insert 关闭相机，恢复游戏界面与正常时间。",34,379,820,42,12,Color.White);
+    AddLabel(content,"取景提示",34,450,820,32,15,Color.White);
+    AddLabel(content,"鼠标与平移按当前画面方向操作，7 / 9 沿世界竖直方向升降。\nF5 复位时恢复横屏；竖屏拍摄后，将图片或视频反向旋转 90°。\n减速不影响相机速度；暂停后继续，会保留减速状态。",34,495,820,110,12,Color.White);
    }
   }else{
    Heading("注意事项");
    AddLabel(content,"运行环境",34,112,820,32,15,Color.White);
-   AddLabel(content,"仅用于离线游戏，支持 Dark Souls III 1.15.2.0。\n先使用你的游戏或模组启动方式进入场景，再注入相机。",34,157,820,78,12,Color.White);
+   AddLabel(content,"Windows x64，Dark Souls III 1.15.2.0，.NET Framework 4.x。\n仅离线使用。",34,157,820,65,12,Color.White);
    AddLabel(content,"存档与备份",34,235,820,32,15,Color.White);
-   AddLabel(content,"相机不会自动切换、复制或修改存档文件。\n使用哪个存档由游戏启动配置决定；离线不等于独立存档。\n需要隔离主存档时，请配置独立存档，并在测试前备份。",34,280,820,95,12,Color.White);
+   AddLabel(content,"存档由游戏启动配置决定；测试前请备份存档。",34,280,820,60,12,Color.White);
    AddLabel(content,"模组兼容",34,385,820,32,15,Color.White);
-   AddLabel(content,"当前功能版本已由用户通过 Mod Engine 2 实测正常。\n其他模组组合仍需验证；修改相同镜头、UI或时间功能时可能冲突。\n隐藏菜单仅隐藏绘制，菜单仍可能响应操作；操作前先恢复显示。",34,430,820,95,12,Color.White);
+   AddLabel(content,"已通过 Mod Engine 2 实测；其他镜头、UI或时间控制模组可能冲突。\n隐藏菜单后仍可操作，使用菜单前请恢复显示。",34,430,820,75,12,Color.White);
    AddLabel(content,"更新与退出",34,535,820,32,15,Color.White);
-   AddLabel(content,"更新相机组件前，请退出游戏。\n“恢复并断开”会恢复本工具接管的状态；组件在游戏退出时卸载。\n异常信息记录在 data/client.log。",34,580,820,110,12,Color.White);
+   AddLabel(content,"更新程序前请退出游戏。\n“恢复并断开”可恢复相机、界面与时间状态。",34,580,820,75,12,Color.White);
   }
  }
 

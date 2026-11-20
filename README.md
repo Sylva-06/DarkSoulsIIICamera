@@ -1,29 +1,25 @@
 # Dark Souls III Camera · 黑暗之魂Ⅲ摄影工具
 
-魂3离线摄影相机。使用独立Windows设置界面，将相机控制DLL加载到已运行的游戏进程，支持中文界面和游戏内快捷键。
+魂3自由相机工具，支持中文界面和游戏内快捷键。
 
 作者：[Sylva-06](https://github.com/Sylva-06) · [MIT License](LICENSE) · [第三方声明与致谢](THIRD-PARTY-NOTICES.md)
 
 ## 功能
 
-- 自由移动、鼠标／方向键转向、独立倾斜、FOV、相机锁定。
-- F5回到当前人物附近，保持自由相机开启并恢复横屏。
-- 正反90°竖屏、FOV构图补偿，按当前画面方向控制；升降沿世界竖直方向。
-- 普通HUD与互动菜单隐藏、暂停、可配置战斗减速。
-- 可修改按键、移动／转向速度、鼠标灵敏度、平滑响应和加速／减速倍率。
-- 客户端断开或失去心跳后恢复本工具接管的状态。
+- 自由镜头、倾斜、视野调节、锁定与人物附近复位。
+- 正反90°竖屏取景。
+- 隐藏界面、暂停与战斗减速。
+- 自定义按键、速度与鼠标手感。
 
 ## 下载与使用
 
-从 [Releases](https://github.com/Sylva-06/DarkSoulsIIICamera/releases/latest) 下载 `DarkSoulsIIICamera-v1.0.1-win-x64.zip`，完整解压到可写目录后运行 `DS3CameraClient.exe`。
+从 [Releases](https://github.com/Sylva-06/DarkSoulsIIICamera/releases/latest) 下载 Windows x64 运行包，完整解压。
 
-## 环境与启动
+1. 启动游戏或模组，进入可操作场景。
+2. 运行 `DS3CameraClient.exe`，点击“注入相机”。
+3. 回到游戏，按 **Insert** 开启相机。
 
-- Windows x64，.NET Framework 4.x。
-- DarkSoulsIII.exe版本 **1.15.2.0**，仅离线使用。
-- 先通过你的游戏／模组启动配置进入可操作场景，再打开DS3CameraClient.exe，点击“注入相机”。
-- 本工具不负责启动游戏，也不会自动切换独立存档；存档由游戏启动配置决定。
-- 已通过Mod Engine 2实测。与其他镜头、HUD或时间控制模组一起使用时，请检查功能是否冲突。
+适用 **Windows x64 / Dark Souls III 1.15.2.0**，需 .NET Framework 4.x，仅离线使用。
 
 ## 默认按键
 
@@ -49,6 +45,13 @@
 | F12 | 保留给Steam截图 |
 
 </details>
+
+## 注意事项
+
+- 已通过 Mod Engine 2 实测；其他相机、UI或时间控制模组可能产生冲突。
+- 竖屏拍摄后，需将图片或视频反向旋转90°。升降始终沿世界竖直方向。
+- 隐藏菜单后仍可操作，使用菜单前请恢复显示。
+- 存档由游戏启动配置决定，测试前请备份；更新程序前请退出游戏。
 
 ## 开发
 
