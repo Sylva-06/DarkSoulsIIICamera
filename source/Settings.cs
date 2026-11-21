@@ -8,6 +8,7 @@ namespace DS3CameraDLLTrial {
 public class Binding {public string Action;public int Key;public Binding(){}public Binding(string action,int key){Action=action;Key=key;}}
 public class Settings {
  public bool PortraitKeepVerticalFraming=true;
+ public bool FollowCameraDirection=false;
  [XmlIgnore]public string UpgradeNote="";
  public double MovementSpeed=3,RotationSpeed=1.3,MouseSensitivity=.002,Smoothing=.12,FastMultiplier=5,SlowMultiplier=.25;
  public Binding[] Bindings=new Binding[]{new Binding("相机开关",45),new Binding("锁定相机",36),new Binding("回到人物附近",116),new Binding("倾斜复位",98),new Binding("FOV复位",106),new Binding("前进",104),new Binding("后退",101),new Binding("左移",100),new Binding("右移",102),new Binding("世界上升",103),new Binding("世界下降",105),new Binding("左倾斜",97),new Binding("右倾斜",99),new Binding("向上转",38),new Binding("向下转",40),new Binding("向左转",37),new Binding("向右转",39),new Binding("缩小FOV",109),new Binding("增大FOV",107),new Binding("按住加速",110),new Binding("隐藏或显示UI",46),new Binding("暂停或继续",96),new Binding("切换竖屏",117),new Binding("减缓时间或恢复",120)};

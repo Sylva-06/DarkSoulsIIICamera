@@ -30,6 +30,7 @@ public class ClientForm:PreviewForm {
    rejected=false;try{form.CommitKey(3,45);}catch(InvalidDataException){rejected=true;}check(rejected&&Settings.Load(temp).Bindings[3].Key==old,"duplicate binding leaves disk intact");
    form.CommitKey(3,122);check(Settings.Load(temp).Bindings[3].Key==122&&form.keyGrid.Rows[3].Cells[1].Value.ToString()=="F11"&&form.input.Shortcuts.Contains(122)&&!form.input.Shortcuts.Contains(old),"rebinding updates file, grid and active input routing");
    form.ShowPage(3);form.framing.Checked=false;form.OnSave();check(!Settings.Load(temp).PortraitKeepVerticalFraming,"portrait checkbox persists");
+   form.follow.Checked=true;form.OnSave();check(Settings.Load(temp).FollowCameraDirection,"movement-follow option persists");form.follow.Checked=false;form.OnSave();check(!Settings.Load(temp).FollowCameraDirection,"movement-follow option can be switched back off");
    form.ShowPage(2);check(form.numbers["按住加速倍率"].Value==9,"saved settings survive navigation");form.ShowPage(0);check(!form.Controls.OfType<CheckBox>().Any(),"connection has no offline confirmation gate");
    var host=Process.Start(new ProcessStartInfo(Application.ExecutablePath,"--test-host"){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden});
    try{
@@ -78,7 +79,7 @@ public class ClientForm:PreviewForm {
    V3 mouse=input.MouseDelta();bool focus=Native.Foreground(bridge.Game.Id);
    bridge.Update(p=>{p.Heartbeat=Win.GetTickCount64();p.Focused=focus?1u:0u;p.MoveX=focus?(float)Axis("右移","左移"):0;p.MoveY=focus?(float)Axis("世界上升","世界下降"):0;p.MoveZ=focus?(float)Axis("前进","后退"):0;
     p.TurnX=focus?(float)Axis("向下转","向上转"):0;p.TurnY=focus?(float)Axis("向右转","向左转"):0;p.TurnZ=focus?(float)Axis("左倾斜","右倾斜"):0;p.Zoom=focus?(float)Axis("增大FOV","缩小FOV"):0;
-    p.MouseX+=(float)mouse.X;p.MouseY+=(float)mouse.Y;p.Wheel+=(float)mouse.Z;p.Speed=(float)settings.MovementSpeed;p.TurnSpeed=(float)settings.RotationSpeed;p.Sensitivity=(float)settings.MouseSensitivity;p.Smoothing=(float)settings.Smoothing;p.FastMultiplier=(float)settings.FastMultiplier;p.Fast=focus&&input.Down(settings.Key("按住加速"))?1u:0u;p.ScreenControls=1;p.KeepFraming=settings.PortraitKeepVerticalFraming?1u:0u;p.SlowMultiplier=(float)settings.SlowMultiplier;return p;});
+    p.MouseX+=(float)mouse.X;p.MouseY+=(float)mouse.Y;p.Wheel+=(float)mouse.Z;p.Speed=(float)settings.MovementSpeed;p.TurnSpeed=(float)settings.RotationSpeed;p.Sensitivity=(float)settings.MouseSensitivity;p.Smoothing=(float)settings.Smoothing;p.FastMultiplier=(float)settings.FastMultiplier;p.Fast=focus&&input.Down(settings.Key("按住加速"))?1u:0u;p.ScreenControls=1;p.KeepFraming=settings.PortraitKeepVerticalFraming?1u:0u;p.SlowMultiplier=(float)settings.SlowMultiplier;p.Commands|=settings.FollowCameraDirection?2048u:4096u;return p;});
    Packet current=bridge.Last;
    if(desiredDirection.HasValue){if(current.State==2||current.State==3){if(current.OutputRotation==desiredDirection.Value)desiredDirection=null;else if((current.Commands&128)==0)bridge.Command(128);}else{desiredDirection=null;}}
    if(direction!=null&&!desiredDirection.HasValue)direction.SelectedIndex=current.OutputRotation==90?1:current.OutputRotation==-90?2:0;

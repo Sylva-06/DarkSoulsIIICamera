@@ -13,10 +13,24 @@ Effects effects;std::atomic<bool> restoreRequested{false};Frame lastTemplate;boo
 Motion motion;bool armed=false,pendingToggle=false,pendingReset=false,testMode=false;
 uint64_t frameCount=0;std::atomic<uint32_t> errorCode{0},notice{0};uintptr_t boundOwner=0,boundPlayer=0;
 uintptr_t imageBase,hookSite;bool hookEnabled=false;LARGE_INTEGER lastClock{},frequency{};
+bool followRequested=false;int followOriginal=-1;uintptr_t followOwner=0;
 using CopyCamera=void(__fastcall*)(void*,void*,void*);CopyCamera original;
 bool readMemory(uintptr_t address,void* out,size_t count){SIZE_T n=0;return address>=0x10000&&ReadProcessMemory(GetCurrentProcess(),(void*)address,out,count,&n)&&n==count;}
 uintptr_t pointer(uintptr_t address){uintptr_t x=0;readMemory(address,&x,8);return x;}
-void stopMotion(){AcquireSRWLockExclusive(&gate);motion.on=false;motion.locked=false;motion.outputDegrees=0;motion.clear();pendingToggle=pendingReset=false;boundOwner=boundPlayer=0;ReleaseSRWLockExclusive(&gate);}
+// Character movement follows the camera object the game itself feeds to the frame
+// copy. The game only reads that object while its free-camera mode is non-zero, so
+// the mode is borrowed for the session and restored as soon as the camera closes.
+void releaseFollow(){if(followOriginal>=0&&followOwner){int value=followOriginal;memoryWrite(followOwner+0xE0,&value,4);}followOriginal=-1;followOwner=0;}
+void pushFollow(uintptr_t owner){
+ if(!followRequested||!owner)return;
+ uintptr_t freecam=pointer(owner+0xE8);if(!freecam)return;
+ Frame frame;encode(frame,followPose(motion.pose,motion.yaw,motion.pitch));
+ if(!memoryWrite(freecam+0x10,frame.bytes+0x10,64)||!memoryWrite(freecam+0x50,frame.bytes+0x50,4))return;
+ int mode=0;if(!readMemory(owner+0xE0,&mode,4)||mode==3)return;
+ if(followOriginal<0||followOwner!=owner){followOwner=owner;followOriginal=mode;}
+ int borrowed=3;memoryWrite(owner+0xE0,&borrowed,4);
+}
+void stopMotion(){AcquireSRWLockExclusive(&gate);motion.on=false;motion.locked=false;motion.outputDegrees=0;motion.clear();pendingToggle=pendingReset=false;boundOwner=boundPlayer=0;releaseFollow();ReleaseSRWLockExclusive(&gate);}
 void __fastcall cameraCopy(void* owner,void* primary,void* secondary){
  Frame frame;bool replace=false;uintptr_t expected=testMode?(uintptr_t)owner:pointer(pointer(imageBase+0x475abd0)+0x18);
  uintptr_t player=testMode?1:pointer(pointer(imageBase+0x477fdb8)+0x80);
@@ -24,8 +38,8 @@ void __fastcall cameraCopy(void* owner,void* primary,void* secondary){
  if(armed&&(uintptr_t)owner==expected&&expected&&player){
   frameCount++;
   Frame incoming;if(readMemory((uintptr_t)primary,&incoming,sizeof(incoming))){lastTemplate=incoming;hasTemplate=true;float aspect=getFloat(incoming,0x54);if(std::isfinite(aspect)&&aspect>=.2f&&aspect<=8)motion.aspect=aspect;}
-  if(motion.on&&(boundOwner!=expected||boundPlayer!=player)){motion.on=false;motion.clear();restoreRequested=true;notice=3;}
-  if(pendingToggle&&motion.on&&!pendingReset){motion.on=false;motion.clear();motion.outputDegrees=0;restoreRequested=true;notice=0;pendingToggle=false;}
+  if(motion.on&&(boundOwner!=expected||boundPlayer!=player)){motion.on=false;motion.clear();restoreRequested=true;notice=3;releaseFollow();}
+  if(pendingToggle&&motion.on&&!pendingReset){motion.on=false;motion.clear();motion.outputDegrees=0;restoreRequested=true;notice=0;pendingToggle=false;releaseFollow();}
   if(pendingToggle||pendingReset){
    Frame live;Pose pose;
    if(readMemory((uintptr_t)primary,&live,sizeof(live))&&decode(live,pose)){
@@ -34,11 +48,12 @@ void __fastcall cameraCopy(void* owner,void* primary,void* secondary){
    pendingToggle=pendingReset=false;
   }
   if(motion.on&&readMemory((uintptr_t)primary,&frame,sizeof(frame))){encode(frame,motion.rendered());replace=true;}
- }else if(armed&&motion.on&&(!expected||!player)){motion.on=false;motion.clear();restoreRequested=true;notice=3;}
+  if(motion.on&&followRequested)pushFollow(expected);
+ }else if(armed&&motion.on&&(!expected||!player)){motion.on=false;motion.clear();restoreRequested=true;notice=3;releaseFollow();}
  ReleaseSRWLockExclusive(&gate);
  if(replace)original(owner,&frame,&frame);else original(owner,primary,secondary);
 }
-void disableHook(){stopMotion();effects.restore();AcquireSRWLockExclusive(&gate);armed=false;ReleaseSRWLockExclusive(&gate);if(hookEnabled&&!testMode){if(MH_DisableHook((void*)hookSite)!=MH_OK){errorCode=7;return;}}hookEnabled=false;}
+void disableHook(){followRequested=false;stopMotion();effects.restore();AcquireSRWLockExclusive(&gate);armed=false;ReleaseSRWLockExclusive(&gate);if(hookEnabled&&!testMode){if(MH_DisableHook((void*)hookSite)!=MH_OK){errorCode=7;return;}}hookEnabled=false;}
 bool enableHook(){
  if(hookEnabled)return true;
  if(!testMode){const unsigned char expected[]={0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x6c,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x57};unsigned char actual[16];if(!readMemory(hookSite,actual,16)||memcmp(expected,actual,16)){errorCode=5;return false;}}
@@ -84,7 +99,9 @@ DWORD WINAPI run(void*){
      if(errorCode==8)errorCode=0;
      AcquireSRWLockExclusive(&gate);
      motion.screenControls=true;motion.keepFraming=input.keepFraming!=0;
-     if(input.commands&Toggle){if(motion.on){motion.on=false;motion.clear();motion.outputDegrees=0;restoreRequested=true;}else pendingToggle=!pendingToggle;}
+     if(input.commands&MoveByCamera)followRequested=true;
+     if(input.commands&MoveByGame){followRequested=false;releaseFollow();}
+     if(input.commands&Toggle){if(motion.on){motion.on=false;motion.clear();motion.outputDegrees=0;restoreRequested=true;releaseFollow();}else pendingToggle=!pendingToggle;}
      if((input.commands&Recenter)&&motion.on){if(effects.paused&&hasTemplate){Pose live;if(decode(lastTemplate,live)){motion.reset(live);notice=2;}}else pendingReset=true;}
      if((input.commands&Portrait)&&motion.on)motion.cyclePortrait();
      if((input.commands&Lock)&&motion.on){motion.locked=!motion.locked;motion.clear();}
@@ -167,6 +184,27 @@ extern "C" __declspec(dllexport) int DS3Camera_RunRotationTests(){
   p.rotation=Quat::axis({0,1,0},.4)*Quat::axis({1,0,0},.3)*Quat::axis({0,0,1},tilt);m.reset(p);Vec right=p.rotation.rotate({1,0,0});forward=p.rotation.rotate({0,0,1});input.mouseX=.01f;input.mouseY=0;m.update(input,.016);
   if(dot(m.pose.rotation.rotate({0,0,1})-forward,right)<=0)return -305;count++;
  }
+ return count;
+}
+extern "C" __declspec(dllexport) int DS3Camera_RunFollowTests(){
+ // The movement reference the game reads must stay level and follow only yaw/pitch:
+ // manual bank and the F6 screen rotation must never tilt or spin W/A/S/D.
+ int count=0;auto check=[&](bool ok){if(ok)count++;return ok;};
+ auto bank=[](const Pose& p){Vec f=p.rotation.rotate({0,0,1}),right=p.rotation.rotate({1,0,0});Vec horizon=cross({0,1,0},f);horizon=horizon*(1/horizon.length());Vec vertical=cross(f,horizon);return std::atan2(dot(right,vertical),dot(right,horizon));};
+ for(double yaw:{-3.,-1.5707963267948966,0.,.7,1.5707963267948966,3.})for(double pitch:{-1.2,0.,.55,1.2})for(double roll:{0.,.9,-1.4})for(int degrees:{0,90,-90}){
+  Pose pose;pose.rotation=Quat::axis({0,1,0},yaw)*Quat::axis({1,0,0},pitch)*Quat::axis({0,0,1},roll);
+  Pose follow=followPose(pose,yaw,pitch);
+  if(!check(std::abs(std::remainder(bank(follow),2*3.141592653589793))<1e-10))return -10-count;
+  Vec forward=follow.rotation.rotate({0,0,1}),expected{std::sin(yaw)*std::cos(pitch),-std::sin(pitch),std::cos(yaw)*std::cos(pitch)};
+  if(!check((forward-expected).length()<1e-10))return -20-count;
+  Vec right=follow.rotation.rotate({1,0,0}),horizontal{std::cos(yaw),0,-std::sin(yaw)};
+  if(!check((right-horizontal).length()<1e-10))return -30-count;
+  Vec up=follow.rotation.rotate({0,1,0});if(!check(dot(up,{0,1,0})>0))return -40-count;
+  if(!check(follow.position.x==pose.position.x&&follow.fov==pose.fov))return -50-count;
+ }
+ Pose sample;sample.position={4,5,6};sample.fov=60;Frame frame;encode(frame,followPose(sample,.7,.3));
+ if(!check(std::abs(getFloat(frame,0x50)-(float)(60*3.141592653589793/180))<1e-5))return -60-count;
+ if(!check(std::abs(getFloat(frame,0x40)-4)<1e-6&&std::abs(getFloat(frame,0x44)-5)<1e-6&&std::abs(getFloat(frame,0x48)-6)<1e-6))return -70-count;
  return count;
 }
 extern "C" __declspec(dllexport) int DS3Camera_RunStage2Tests(){

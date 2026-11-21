@@ -8,7 +8,7 @@
 
 namespace camera {
 constexpr uint32_t Magic=0x33434d44, Version=3;
-enum Command : uint32_t {Toggle=1,Lock=2,RollReset=4,FovReset=8,Recenter=16,Disconnect=32,Attach=64,Portrait=128,Hud=256,Pause=512,Slow=1024};
+enum Command : uint32_t {Toggle=1,Lock=2,RollReset=4,FovReset=8,Recenter=16,Disconnect=32,Attach=64,Portrait=128,Hud=256,Pause=512,Slow=1024,MoveByCamera=2048,MoveByGame=4096};
 // Single-writer fields are copied while holding the named IPC mutex.
 struct Packet {
  uint32_t magic=Magic,version=Version,clientPid=0;float timeScale=1;
@@ -72,6 +72,12 @@ inline Pose portraitPose(const Pose& logical,int degrees,double aspect,bool fram
  Pose output=logical;output.rotation=logical.rotation*Quat::axis({0,0,1},degrees*3.141592653589793/180);
  if(degrees&&framing)output.fov=2*std::atan(std::tan(logical.fov*3.141592653589793/360)/aspect)*180/3.141592653589793;
  return output;
+}
+// Ground movement reference: the game reads a camera basis for character input, so
+// publish yaw/pitch only. Manual bank and the F6 screen rotation stay out of it,
+// otherwise a tilted or 90-degree picture would rotate W/D off the ground plane.
+inline Pose followPose(const Pose& pose,double yaw,double pitch){
+ Pose output=pose;output.rotation=Quat::axis({0,1,0},yaw)*Quat::axis({1,0,0},pitch);return output;
 }
 struct Motion {
  Pose pose;Vec velocity,angular;double initialFov=43,yaw=0,pitch=0,roll=0;bool on=false,locked=false,screenControls=true,keepFraming=true;int outputDegrees=0;double aspect=16./9;

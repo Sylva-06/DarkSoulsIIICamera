@@ -27,6 +27,8 @@ public static class Tests {
   var stage2=(NativeTest)Marshal.GetDelegateForFunctionPointer(Win.GetProcAddress(dll,"DS3Camera_RunStage2Tests"),typeof(NativeTest));int stage2Count=stage2();Check(stage2Count>150,"native stage-two projection/UI/pause/cleanup: "+stage2Count);
   var slowTest=(NativeTest)Marshal.GetDelegateForFunctionPointer(Win.GetProcAddress(dll,"DS3Camera_RunSlowTimeTests"),typeof(NativeTest));int slowCount=slowTest();Check(slowCount>30,"native slowdown/pause/ownership/restore: "+slowCount);
   var rotation=(NativeTest)Marshal.GetDelegateForFunctionPointer(Win.GetProcAddress(dll,"DS3Camera_RunRotationTests"),typeof(NativeTest));Check(rotation()==25,"confirmed no-roll-drift behaviour retained");
+  var follow=(NativeTest)Marshal.GetDelegateForFunctionPointer(Win.GetProcAddress(dll,"DS3Camera_RunFollowTests"),typeof(NativeTest));int followCount=follow();Check(followCount==1082,"movement reference stays level and follows yaw/pitch only: "+followCount);
+  var defaults=new Settings();Check(!defaults.FollowCameraDirection,"camera-following movement is off until the user opts in");
   var settings=new Settings();settings.Validate();Check(settings.Key("按住加速")==110&&settings.FastMultiplier==5,"decimal five-times acceleration default");Check(settings.Key("回到人物附近")==116,"F5 recenter default");Check(settings.Key("减缓时间或恢复")==120&&settings.SlowMultiplier==.25&&!settings.Bindings.Any(b=>b.Key==121),"F9 slowdown default and no F10 binding");
   Check(settings.Key("隐藏或显示UI")==46&&settings.Key("暂停或继续")==96&&settings.Key("切换竖屏")==117,"stage-two default keys");
   Check(Settings.Command("隐藏或显示UI")==256&&Settings.Command("暂停或继续")==512&&Settings.Command("切换竖屏")==128,"stage-two command routing");
@@ -66,7 +68,7 @@ public static class Tests {
    }
   }finally{if(!host.HasExited)host.Kill();host.Dispose();}
   string config=Path.Combine(Log.Root,"camera-settings.xml");Settings.Load(config).Save(config);
-  return count+" managed configuration/input/IPC/injection/combined cleanup checks passed.\r\n"+stage2Count+" native portrait/HUD/menu/pause/restore checks passed.\r\n"+slowCount+" native slowdown/pause/ownership/restore checks passed.\r\n25 no-roll-drift rotation scenarios retained.\r\n"+nativeCount+" native math/acceleration/MinHook restore checks passed.\r\nAll injection and hook execution used this tool's own test processes; no game process was accessed.\r\nActual game rendering, current-player F5 framing and mod compatibility require manual testing.\r\n";
+  return count+" managed configuration/input/IPC/injection/combined cleanup checks passed.\r\n"+stage2Count+" native portrait/HUD/menu/pause/restore checks passed.\r\n"+slowCount+" native slowdown/pause/ownership/restore checks passed.\r\n25 no-roll-drift rotation scenarios retained.\r\n"+followCount+" native movement-reference checks passed (bank and portrait rotation ignored).\r\n"+nativeCount+" native math/acceleration/MinHook restore checks passed.\r\nAll injection and hook execution used this tool's own test processes; no game process was accessed.\r\nActual game rendering, current-player F5 framing, mod compatibility and in-game character movement require manual testing.\r\n";
  }
 }
 }
