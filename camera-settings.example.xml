@@ -2,6 +2,7 @@
 <Settings xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <PortraitKeepVerticalFraming>true</PortraitKeepVerticalFraming>
   <FollowCameraDirection>false</FollowCameraDirection>
+  <FollowCharacterFacing>false</FollowCharacterFacing>
   <MovementSpeed>3</MovementSpeed>
   <RotationSpeed>1.3</RotationSpeed>
   <MouseSensitivity>0.002</MouseSensitivity>

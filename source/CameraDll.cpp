@@ -13,7 +13,8 @@ Effects effects;std::atomic<bool> restoreRequested{false};Frame lastTemplate;boo
 Motion motion;bool armed=false,pendingToggle=false,pendingReset=false,testMode=false;
 uint64_t frameCount=0;std::atomic<uint32_t> errorCode{0},notice{0};uintptr_t boundOwner=0,boundPlayer=0;
 uintptr_t imageBase,hookSite;bool hookEnabled=false;LARGE_INTEGER lastClock{},frequency{};
-bool followRequested=false;int followOriginal=-1;uintptr_t followOwner=0;
+int followMode=0; // 0 = native, 1 = free-camera heading, 2 = character facing
+int followOriginal=-1;uintptr_t followOwner=0;
 using CopyCamera=void(__fastcall*)(void*,void*,void*);CopyCamera original;
 bool readMemory(uintptr_t address,void* out,size_t count){SIZE_T n=0;return address>=0x10000&&ReadProcessMemory(GetCurrentProcess(),(void*)address,out,count,&n)&&n==count;}
 uintptr_t pointer(uintptr_t address){uintptr_t x=0;readMemory(address,&x,8);return x;}
@@ -28,9 +29,22 @@ void diagLine(const char* text){
  wchar_t* name=wcsrchr(path,L'\\');if(!name)return;wcscpy(name+1,L"follow-diag.log");
  FILE* file=nullptr;if(_wfopen_s(&file,path,L"a")==0&&file){fputs(text,file);fclose(file);}
 }
+// Character facing, for the second reference mode. ChrPhysics.Angle (+0x74) is the
+// angle the engine itself uses when warping a character, so it already encodes both
+// the unit (degrees) and the sign convention; the mapping below is calibrated against
+// the frame the log records, not assumed.
+double characterYaw(){
+ uintptr_t player=pointer(pointer(imageBase+0x477fdb8)+0x80);if(!player)return NAN;
+ uintptr_t modules=pointer(player+0x1F90);if(!modules)return NAN;
+ uintptr_t physics=pointer(modules+0x68);if(!physics)return NAN;
+ float degrees=0;if(!readMemory(physics+0x74,&degrees,4)||!std::isfinite(degrees))return NAN;
+ return -degrees*3.141592653589793/180.0;
+}
 void pushFollow(uintptr_t owner){
- if(!followRequested||!owner)return;
- Pose fullPose=motion.rendered(),flatPose=followPose(motion.pose,motion.yaw,motion.pitch);
+ if(!followMode||!owner)return;
+ double heading=motion.yaw;
+ if(followMode==2){double facing=characterYaw();if(std::isfinite(facing))heading=facing;}
+ Pose fullPose=motion.rendered(),flatPose=followPose(motion.pose,heading,motion.pitch);
  Frame full;encode(full,fullPose);
  Frame flat;encode(flat,flatPose);
  uintptr_t character=pointer(pointer(imageBase+0x475abd0)+0x28);
@@ -40,10 +54,10 @@ void pushFollow(uintptr_t owner){
  if(freecam)wroteFrame=memoryWrite(freecam+0x10,full.bytes+0x10,0x40)&&memoryWrite(freecam+0x50,full.bytes+0x50,4);
  static unsigned long calls=0;
  if((calls++%240)==0&&calls<12000){
-  Vec flatForward=flatPose.rotation.rotate({0,0,1}),fullForward=fullPose.rotation.rotate({0,0,1});
-  char line[320];
-  snprintf(line,sizeof(line),"char=%llx frame=%llx yaw=%.4f pitch=%.4f flat=(%.3f,%.3f,%.3f) full=(%.3f,%.3f,%.3f) wroteChar=%d wroteFrame=%d mode=%d\n",
-   (unsigned long long)character,(unsigned long long)freecam,motion.yaw,motion.pitch,flatForward.x,flatForward.y,flatForward.z,fullForward.x,fullForward.y,fullForward.z,wroteCharacter?1:0,wroteFrame?1:0,followOriginal);
+  Vec flatForward=flatPose.rotation.rotate({0,0,1});
+  char line[360];
+  snprintf(line,sizeof(line),"mode=%d char=%llx frame=%llx heading=%.4f camYaw=%.4f facing=%.4f pitch=%.4f flat=(%.3f,%.3f,%.3f) wroteChar=%d wroteFrame=%d borrowed=%d\n",
+   followMode,(unsigned long long)character,(unsigned long long)freecam,heading,motion.yaw,characterYaw(),motion.pitch,flatForward.x,flatForward.y,flatForward.z,wroteCharacter?1:0,wroteFrame?1:0,followOriginal);
   diagLine(line);
  }
  if(!freecam)return;
@@ -69,12 +83,12 @@ void __fastcall cameraCopy(void* owner,void* primary,void* secondary){
    pendingToggle=pendingReset=false;
   }
   if(motion.on&&readMemory((uintptr_t)primary,&frame,sizeof(frame))){encode(frame,motion.rendered());replace=true;}
-  if(motion.on&&followRequested)pushFollow(expected);
+  if(motion.on&&followMode)pushFollow(expected);
  }else if(armed&&motion.on&&(!expected||!player)){motion.on=false;motion.clear();restoreRequested=true;notice=3;releaseFollow();}
  ReleaseSRWLockExclusive(&gate);
  if(replace)original(owner,&frame,&frame);else original(owner,primary,secondary);
 }
-void disableHook(){followRequested=false;stopMotion();effects.restore();AcquireSRWLockExclusive(&gate);armed=false;ReleaseSRWLockExclusive(&gate);if(hookEnabled&&!testMode){if(MH_DisableHook((void*)hookSite)!=MH_OK){errorCode=7;return;}}hookEnabled=false;}
+void disableHook(){followMode=0;stopMotion();effects.restore();AcquireSRWLockExclusive(&gate);armed=false;ReleaseSRWLockExclusive(&gate);if(hookEnabled&&!testMode){if(MH_DisableHook((void*)hookSite)!=MH_OK){errorCode=7;return;}}hookEnabled=false;}
 bool enableHook(){
  if(hookEnabled)return true;
  if(!testMode){const unsigned char expected[]={0x48,0x89,0x5c,0x24,0x08,0x48,0x89,0x6c,0x24,0x10,0x48,0x89,0x74,0x24,0x18,0x57};unsigned char actual[16];if(!readMemory(hookSite,actual,16)||memcmp(expected,actual,16)){errorCode=5;return false;}}
@@ -120,8 +134,9 @@ DWORD WINAPI run(void*){
      if(errorCode==8)errorCode=0;
      AcquireSRWLockExclusive(&gate);
      motion.screenControls=true;motion.keepFraming=input.keepFraming!=0;
-     if(input.commands&MoveByCamera)followRequested=true;
-     if(input.commands&MoveByGame){followRequested=false;releaseFollow();}
+     if(input.commands&MoveByCamera)followMode=1;
+     if(input.commands&MoveByCharacter)followMode=2;
+     if(input.commands&MoveByGame){followMode=0;releaseFollow();}
      if(input.commands&Toggle){if(motion.on){motion.on=false;motion.clear();motion.outputDegrees=0;restoreRequested=true;releaseFollow();}else pendingToggle=!pendingToggle;}
      if((input.commands&Recenter)&&motion.on){if(effects.paused&&hasTemplate){Pose live;if(decode(lastTemplate,live)){motion.reset(live);notice=2;}}else pendingReset=true;}
      if((input.commands&Portrait)&&motion.on)motion.cyclePortrait();

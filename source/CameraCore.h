@@ -8,7 +8,7 @@
 
 namespace camera {
 constexpr uint32_t Magic=0x33434d44, Version=3;
-enum Command : uint32_t {Toggle=1,Lock=2,RollReset=4,FovReset=8,Recenter=16,Disconnect=32,Attach=64,Portrait=128,Hud=256,Pause=512,Slow=1024,MoveByCamera=2048,MoveByGame=4096};
+enum Command : uint32_t {Toggle=1,Lock=2,RollReset=4,FovReset=8,Recenter=16,Disconnect=32,Attach=64,Portrait=128,Hud=256,Pause=512,Slow=1024,MoveByCamera=2048,MoveByGame=4096,MoveByCharacter=8192};
 // Single-writer fields are copied while holding the named IPC mutex.
 struct Packet {
  uint32_t magic=Magic,version=Version,clientPid=0;float timeScale=1;

@@ -11,7 +11,7 @@ namespace DS3CameraDLLTrial {
 public class PreviewForm:Form {
  readonly Color background=Color.FromArgb(5,5,5),sidebar=Color.FromArgb(46,46,46),muted=Color.FromArgb(168,168,168),control=Color.FromArgb(47,47,47);
  readonly float dpi=PreviewDpi.Scale;int D(int value){return (int)Math.Round(value*dpi);}
- bool showHelpSteps;Panel title,nav,content,footer;Button[] navigation;protected Label status;protected Settings settings;protected DataGridView keyGrid;protected ComboBox direction;protected CheckBox framing;protected CheckBox follow;protected TextBox processField;protected Button injectButton;protected readonly Dictionary<string,NumericUpDown> numbers=new Dictionary<string,NumericUpDown>();
+ bool showHelpSteps;Panel title,nav,content,footer;Button[] navigation;protected Label status;protected Settings settings;protected DataGridView keyGrid;protected ComboBox direction;protected CheckBox framing;protected CheckBox follow;protected ComboBox followSource;protected TextBox processField;protected Button injectButton;protected readonly Dictionary<string,NumericUpDown> numbers=new Dictionary<string,NumericUpDown>();
  protected int currentPage;protected string loadError="";
  readonly string[] pages={"连接与注入","按键设置","速度与手感","UI、暂停与竖屏","操作说明","注意事项"};
  [DllImport("user32.dll")]static extern bool ReleaseCapture();[DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr handle,int message,IntPtr wParam,IntPtr lParam);
@@ -42,10 +42,10 @@ public class PreviewForm:Form {
  void NumericPreview(string label,double value,int y,decimal min,decimal max,int decimals,string suffix=""){
   AddLabel(content,label,34,y+5,365,34,12,Color.White);var input=new NumericUpDown{Value=(decimal)value,Minimum=min,Maximum=max,DecimalPlaces=decimals,Increment=decimals>=4?.0001m:decimals==2?.01m:1m,Location=new Point(420,y),Size=new Size(175,34),BackColor=background,ForeColor=Color.White,BorderStyle=BorderStyle.FixedSingle,Font=new Font(Font.FontFamily,13)};content.Controls.Add(input);numbers[label]=input;AddLabel(content,suffix,612,y+5,190,32,11,muted);
  }
- protected void ReadSettingsPage(){if(currentPage==2&&numbers.Count==6){settings.MovementSpeed=(double)numbers["相机移动速度"].Value;settings.RotationSpeed=(double)numbers["旋转速度"].Value;settings.MouseSensitivity=(double)numbers["鼠标灵敏度"].Value;settings.Smoothing=(double)numbers["平滑响应"].Value;settings.FastMultiplier=(double)numbers["按住加速倍率"].Value;settings.SlowMultiplier=(double)numbers["战斗减速倍率"].Value;}if(currentPage==3){if(framing!=null)settings.PortraitKeepVerticalFraming=framing.Checked;if(follow!=null)settings.FollowCameraDirection=follow.Checked;}}
+ protected void ReadSettingsPage(){if(currentPage==2&&numbers.Count==6){settings.MovementSpeed=(double)numbers["相机移动速度"].Value;settings.RotationSpeed=(double)numbers["旋转速度"].Value;settings.MouseSensitivity=(double)numbers["鼠标灵敏度"].Value;settings.Smoothing=(double)numbers["平滑响应"].Value;settings.FastMultiplier=(double)numbers["按住加速倍率"].Value;settings.SlowMultiplier=(double)numbers["战斗减速倍率"].Value;}if(currentPage==3){if(framing!=null)settings.PortraitKeepVerticalFraming=framing.Checked;if(follow!=null)settings.FollowCameraDirection=follow.Checked;if(followSource!=null)settings.FollowCharacterFacing=followSource.SelectedIndex==1;}}
  protected void RefreshKeys(){if(keyGrid==null)return;int row=keyGrid.CurrentRow==null?0:keyGrid.CurrentRow.Index;keyGrid.Rows.Clear();foreach(var binding in settings.Bindings)keyGrid.Rows.Add(ActionName(binding.Action),Settings.Name(binding.Key));if(keyGrid.Rows.Count>0)keyGrid.CurrentCell=keyGrid.Rows[Math.Min(row,keyGrid.Rows.Count-1)].Cells[0];}
  public void ShowPage(int index){
-  currentPage=index;keyGrid=null;direction=null;framing=null;follow=null;processField=null;injectButton=null;numbers.Clear();
+  currentPage=index;keyGrid=null;direction=null;framing=null;follow=null;followSource=null;processField=null;injectButton=null;numbers.Clear();
   foreach(Control child in content.Controls.Cast<Control>().ToArray())child.Dispose();content.Controls.Clear();content.AutoScrollPosition=Point.Empty;for(int i=0;i<navigation.Length;i++){navigation[i].BackColor=i==index?Color.Black:sidebar;navigation[i].ForeColor=i==index?Color.White:Color.FromArgb(190,190,190);}
   if(index==0){
    Heading("连接与注入");AddLabel(content,"游戏进程",34,109,800,28,12,Color.White);processField=Field("尚未检测到游戏进程",145,670);ButtonAt(content,"刷新进程",718,143,145,37,OnRefresh);
@@ -63,9 +63,10 @@ public class PreviewForm:Form {
    Heading("UI、暂停与竖屏");AddLabel(content,"画面与游戏状态",34,111,820,31,12,Color.White);ButtonAt(content,"隐藏 / 显示 UI",34,160,255,46,()=>OnCommand(256));ButtonAt(content,"暂停 / 继续",309,160,270,46,()=>OnCommand(512));ButtonAt(content,"减速 / 正常",599,160,264,46,()=>OnCommand(1024));
    AddLabel(content,"画面方向",34,256,820,31,12,Color.White);direction=new ComboBox{Location=new Point(34,303),Size=new Size(829,36),DropDownStyle=ComboBoxStyle.DropDownList,BackColor=control,ForeColor=Color.White,FlatStyle=FlatStyle.Flat};direction.Items.AddRange(new object[]{"横屏 0°","画面顺时针 90°","画面逆时针 90°"});direction.SelectedIndex=0;direction.SelectionChangeCommitted+=(s,e)=>OnDirection(direction.SelectedIndex);content.Controls.Add(direction);
    framing=new CheckBox{Text="竖屏保持上下构图，自动补偿 FOV",Location=new Point(34,366),AutoSize=true,ForeColor=Color.White,Checked=settings.PortraitKeepVerticalFraming};content.Controls.Add(framing);
-   follow=new CheckBox{Text="自由相机开启时，人物按画面水平方向移动（试作）",Location=new Point(34,404),AutoSize=true,ForeColor=Color.White,Checked=settings.FollowCameraDirection};content.Controls.Add(follow);
-   Note("关闭后人物恢复游戏原有方向；相机俯仰、倾斜与竖屏不影响地面方向。",432,28);
-   ButtonAt(content,"保存并应用",34,478,190,44,OnSave);
+   follow=new CheckBox{Text="自由相机开启时，人物移动方向改用下方参考（试作）",Location=new Point(34,398),AutoSize=true,ForeColor=Color.White,Checked=settings.FollowCameraDirection};content.Controls.Add(follow);
+   followSource=new ComboBox{Location=new Point(34,424),Size=new Size(380,30),DropDownStyle=ComboBoxStyle.DropDownList,BackColor=control,ForeColor=Color.White,FlatStyle=FlatStyle.Flat,Enabled=settings.FollowCameraDirection};followSource.Items.AddRange(new object[]{"按画面水平方向（W 朝画面深处）","按人物自身朝向（W 朝人物前方）"});followSource.SelectedIndex=settings.FollowCharacterFacing?1:0;follow.CheckedChanged+=(s,e)=>followSource.Enabled=follow.Checked;content.Controls.Add(followSource);
+   Note("关闭即恢复游戏原有方向；两种参考都不受俯仰、倾斜与竖屏影响。",466,22);
+   ButtonAt(content,"保存并应用",34,500,190,44,OnSave);
   }else if(index==4){
    Heading("操作说明");ButtonAt(content,"默认按键",34,90,120,34,()=>{showHelpSteps=false;ShowPage(4);});ButtonAt(content,"使用流程",165,90,120,34,()=>{showHelpSteps=true;ShowPage(4);});AddLabel(content,"自定义绑定请查看「按键设置」。",310,98,550,25,10,muted);
    if(!showHelpSteps)content.Controls.Add(new KeyboardMap{Location=new Point(34,143)});
