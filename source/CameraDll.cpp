@@ -17,15 +17,36 @@ bool followRequested=false;int followOriginal=-1;uintptr_t followOwner=0;
 using CopyCamera=void(__fastcall*)(void*,void*,void*);CopyCamera original;
 bool readMemory(uintptr_t address,void* out,size_t count){SIZE_T n=0;return address>=0x10000&&ReadProcessMemory(GetCurrentProcess(),(void*)address,out,count,&n)&&n==count;}
 uintptr_t pointer(uintptr_t address){uintptr_t x=0;readMemory(address,&x,8);return x;}
-// Character movement follows the camera object the game itself feeds to the frame
-// copy. The game only reads that object while its free-camera mode is non-zero, so
-// the mode is borrowed for the session and restored as soon as the camera closes.
+// Character movement is built from the character camera (FieldArea+0x28), which the
+// engine recomputes after the character update and before the frame copy. Writing its
+// rotation here therefore lands before the next character update reads it, while the
+// frame copy keeps taking its picture from the free-camera object (GameRend+0xE8)
+// that this session borrows through the free-camera mode (GameRend+0xE0 = 3).
 void releaseFollow(){if(followOriginal>=0&&followOwner){int value=followOriginal;memoryWrite(followOwner+0xE0,&value,4);}followOriginal=-1;followOwner=0;}
+void diagLine(const char* text){
+ wchar_t path[MAX_PATH];if(!module||!GetModuleFileNameW(module,path,MAX_PATH))return;
+ wchar_t* name=wcsrchr(path,L'\\');if(!name)return;wcscpy(name+1,L"follow-diag.log");
+ FILE* file=nullptr;if(_wfopen_s(&file,path,L"a")==0&&file){fputs(text,file);fclose(file);}
+}
 void pushFollow(uintptr_t owner){
  if(!followRequested||!owner)return;
- uintptr_t freecam=pointer(owner+0xE8);if(!freecam)return;
- Frame frame;encode(frame,followPose(motion.pose,motion.yaw,motion.pitch));
- if(!memoryWrite(freecam+0x10,frame.bytes+0x10,64)||!memoryWrite(freecam+0x50,frame.bytes+0x50,4))return;
+ Pose fullPose=motion.rendered(),flatPose=followPose(motion.pose,motion.yaw,motion.pitch);
+ Frame full;encode(full,fullPose);
+ Frame flat;encode(flat,flatPose);
+ uintptr_t character=pointer(pointer(imageBase+0x475abd0)+0x28);
+ bool wroteCharacter=character&&memoryWrite(character+0x10,flat.bytes+0x10,0x30);
+ uintptr_t freecam=pointer(owner+0xE8);
+ bool wroteFrame=false;
+ if(freecam)wroteFrame=memoryWrite(freecam+0x10,full.bytes+0x10,0x40)&&memoryWrite(freecam+0x50,full.bytes+0x50,4);
+ static unsigned long calls=0;
+ if((calls++%240)==0&&calls<12000){
+  Vec flatForward=flatPose.rotation.rotate({0,0,1}),fullForward=fullPose.rotation.rotate({0,0,1});
+  char line[320];
+  snprintf(line,sizeof(line),"char=%llx frame=%llx yaw=%.4f pitch=%.4f flat=(%.3f,%.3f,%.3f) full=(%.3f,%.3f,%.3f) wroteChar=%d wroteFrame=%d mode=%d\n",
+   (unsigned long long)character,(unsigned long long)freecam,motion.yaw,motion.pitch,flatForward.x,flatForward.y,flatForward.z,fullForward.x,fullForward.y,fullForward.z,wroteCharacter?1:0,wroteFrame?1:0,followOriginal);
+  diagLine(line);
+ }
+ if(!freecam)return;
  int mode=0;if(!readMemory(owner+0xE0,&mode,4)||mode==3)return;
  if(followOriginal<0||followOwner!=owner){followOwner=owner;followOriginal=mode;}
  int borrowed=3;memoryWrite(owner+0xE0,&borrowed,4);
