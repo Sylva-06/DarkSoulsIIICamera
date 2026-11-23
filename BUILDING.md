@@ -53,12 +53,12 @@ Get-Content .\build\data\ui-self-test.txt
 Start-Process .\build\DS3CameraClient.exe -ArgumentList '--ui-check' -Wait
 ```
 
-输出到 `build/preview/`。
+输出到 `build/preview/`。`--preview-render` 还会检查最小窗口、多种宽屏和实际最大化布局，并生成 `layout-check.txt`。
 
 ## 项目目录
 
 - `source/`：程序源码。
-- `source/assets/`：透明图标的SVG、PNG和多尺寸ICO；构建时将ICO嵌入EXE。需要调整图形时，可安装Python和Pillow后运行 `python source/assets/generate-icon.py` 重新生成。
+- `source/assets/`：透明图标的SVG、PNG和多尺寸ICO；构建时将ICO和界面图像嵌入EXE，运行时无需外置图片。游戏图形来源与授权范围见第三方声明。需要调整图形时，可安装Python和Pillow后运行 `python source/assets/generate-icon.py` 重新生成。
 - `build/`：本地构建输出。
 - `camera-settings.example.xml`：默认配置模板；运行配置为构建目录中的 `camera-settings.xml`。
 

@@ -21,3 +21,12 @@
 - [FransBouma / InjectableGenericCameraSystem](https://github.com/FransBouma/InjectableGenericCameraSystem)：通用相机框架资料检索，该公开框架采用BSD-2-Clause许可证。
 
 游戏相关地址及短指令签名还通过本地Dark Souls III 1.15.2程序核对。键盘说明图由KeyboardMap.cs绘制。
+
+## 界面图形
+
+- 应用的余火色火焰/光圈图标：本项目设计，矢量源文件及生成脚本在 `source/assets/`。
+- DARK SOULS III 游戏字标：[图像来源](https://www.videogamelogos.com/games/dark-souls-iii/)。
+- 篝火与剑图形：[图像来源](https://www.clipartmax.com/middle/m2H7d3A0H7H7m2H7_dark-souls-clipart-black-and-white-dark-souls-bonfire-logo/)，为系列相关图形。
+
+上述游戏字标和篝火图形用于识别工具适用的游戏，不属于本项目 MIT 授权范围；其相关权利归原权利人所有。本项目为非官方工具，与游戏权利人无关联。
+DARK SOULS® III & ©Bandai Namco Entertainment Inc. / ©2011–2016 FromSoftware, Inc.
