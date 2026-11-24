@@ -26,11 +26,20 @@ public class ClientForm:PreviewForm {
    form.config=temp;form.settings=new Settings();form.ApplyKeys();form.ShowInTaskbar=false;form.Opacity=0;form.Show();Application.DoEvents();
    form.ShowPage(2);form.values[0]=4.25;form.values[1]=1.75;form.values[2]=.00325;form.values[3]=.18;form.values[4]=9;form.values[5]=.35;form.ClickView("保存并应用");
    var saved=Settings.Load(temp);check(saved.MovementSpeed==4.25&&saved.RotationSpeed==1.75&&saved.MouseSensitivity==.00325&&saved.Smoothing==.18&&saved.FastMultiplier==9&&saved.SlowMultiplier==.35,"six speed fields persist from final UI");
-   form.ShowPage(1);int old=form.settings.Bindings[3].Key;bool rejected=false;try{form.CommitKey(3,123);}catch(InvalidDataException){rejected=true;}check(rejected&&form.settings.Bindings[3].Key==old,"F12 rejected without losing previous binding");
+   form.ShowPage(1);form.ClickView("按键行:8");check(form.selectedKey==8,"key table row click selects the intended binding");int old=form.settings.Bindings[3].Key;bool rejected=false;try{form.CommitKey(3,123);}catch(InvalidDataException){rejected=true;}check(rejected&&form.settings.Bindings[3].Key==old,"F12 rejected without losing previous binding");
    rejected=false;try{form.CommitKey(3,45);}catch(InvalidDataException){rejected=true;}check(rejected&&Settings.Load(temp).Bindings[3].Key==old,"duplicate binding leaves disk intact");
    form.CommitKey(3,122);check(Settings.Load(temp).Bindings[3].Key==122&&Settings.Name(form.settings.Bindings[3].Key)=="F11"&&form.input.Shortcuts.Contains(122)&&!form.input.Shortcuts.Contains(old),"rebinding updates file, displayed binding and active input routing");
+   form.ClickView("恢复默认按键");check(form.pendingBindings!=null&&form.pendingBindings[3].Key==98&&Settings.Load(temp).Bindings[3].Key==122&&form.input.Shortcuts.Contains(122),"default keys preview leaves disk and live input intact");
+   string originalConfig=form.config,blockedPath=temp+".directory";bool saveFailed=false;Directory.CreateDirectory(blockedPath);
+   try{form.config=blockedPath;try{form.Save();}catch(IOException){saveFailed=true;}}
+   finally{form.config=originalConfig;if(File.Exists(blockedPath+".tmp"))File.Delete(blockedPath+".tmp");Directory.Delete(blockedPath);}
+   check(saveFailed&&form.pendingBindings!=null&&form.settings.Bindings[3].Key==122&&Settings.Load(temp).Bindings[3].Key==122&&form.input.Shortcuts.Contains(122),"failed default-key save retains pending preview, current file and live bindings");
+   form.CommitKey(3,122);check(form.pendingBindings[3].Key==122,"pending default keys can be edited before saving");form.ClickView("恢复默认按键");form.ShowPage(2);form.ShowPage(1);check(form.pendingBindings[3].Key==98,"pending default keys survive navigation");form.ClickView("保存并应用");
+   saved=Settings.Load(temp);check(form.pendingBindings==null&&saved.Bindings.Select(b=>b.Key).SequenceEqual(new Settings().Bindings.Select(b=>b.Key))&&form.input.Shortcuts.Contains(98)&&!form.input.Shortcuts.Contains(122),"saved defaults update every binding and active input");
+   check(saved.MovementSpeed==4.25&&saved.FastMultiplier==9&&saved.SlowMultiplier==.35&&saved.PortraitKeepVerticalFraming,"restoring bindings preserves non-key settings");
+   using(var dialog=new NumberDialog("旋转速度",1.3,.01,10,.01,2)){dialog.Input.Text="NaN";check(!dialog.TryAccept()&&dialog.Value==1.3,"numeric dialog rejects invalid numbers");dialog.Input.Text="11";check(!dialog.TryAccept(),"numeric dialog enforces configured range");dialog.Input.Text="1.75";check(dialog.TryAccept()&&dialog.Value==1.75,"numeric dialog accepts a valid value");}
    form.ShowPage(3);form.ClickView("竖屏保持上下构图");form.ClickView("保存并应用");check(!Settings.Load(temp).PortraitKeepVerticalFraming,"portrait checkbox persists");
-   form.ClickView("人物移动方向参考");form.ClickView("按画面水平方向");form.ClickView("按人物自身朝向");form.ClickView("保存并应用");check(Settings.Load(temp).FollowCameraDirection&&Settings.Load(temp).FollowCharacterFacing,"character-facing movement reference persists through view controls");form.ClickView("人物移动方向参考");form.ClickView("保存并应用");check(!Settings.Load(temp).FollowCameraDirection,"movement-follow option can be switched back off");
+   form.ClickView("人物移动方向参考");form.ClickView("按人物自身朝向");form.ClickView("保存并应用");check(Settings.Load(temp).FollowCameraDirection&&Settings.Load(temp).FollowCharacterFacing,"character-facing movement reference persists through view controls");form.ShowPage(1);form.ClickView("恢复默认按键");form.ClickView("保存并应用");saved=Settings.Load(temp);check(saved.FollowCameraDirection&&saved.FollowCharacterFacing&&!saved.PortraitKeepVerticalFraming,"key reset preserves both movement-reference options and framing");form.ShowPage(3);form.ClickView("人物移动方向参考");form.ClickView("保存并应用");check(!Settings.Load(temp).FollowCameraDirection,"movement-follow option can be switched back off");
    form.ShowPage(2);check(form.values[4]==9,"saved settings survive navigation");form.ShowPage(0);check(!form.Controls.OfType<CheckBox>().Any(),"connection has no offline confirmation gate");
    var host=Process.Start(new ProcessStartInfo(Application.ExecutablePath,"--test-host"){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden});
    try{
@@ -39,8 +48,8 @@ public class ClientForm:PreviewForm {
     wait(()=>form.bridge.Last.State==1);check(form.message.Contains("已连接"),"live connected status");
     form.OnCommand(1);wait(()=>form.bridge.Last.State==2);check(form.message.Contains("相机开启"),"UI camera command reaches DLL");
     wait(()=>Math.Abs(form.bridge.Last.Speed-4.25)<.001&&Math.Abs(form.bridge.Last.FastMultiplier-9)<.001&&Math.Abs(form.bridge.Last.SlowMultiplier-.35)<.001);check(true,"saved UI values reach live IPC");
-    form.ShowPage(3);form.ClickView("横屏 0°");form.ClickView("逆时针 90°");wait(()=>form.bridge.Last.OutputRotation==-90&&form.desiredDirection==null);check(form.orientation==2,"direct counterclockwise selection reaches DLL");
-    form.ClickView("逆时针 90°");form.ClickView("顺时针 90°");wait(()=>form.bridge.Last.OutputRotation==90&&form.desiredDirection==null);check(form.orientation==1,"direct clockwise selection reaches DLL");
+    form.ShowPage(3);form.ClickView("逆时针 90°");wait(()=>form.bridge.Last.OutputRotation==-90&&form.desiredDirection==null);check(form.orientation==2,"direct counterclockwise selection reaches DLL");
+    form.ClickView("顺时针 90°");wait(()=>form.bridge.Last.OutputRotation==90&&form.desiredDirection==null);check(form.orientation==1,"direct clockwise selection reaches DLL");
     form.ClickView("减速 / 正常");wait(()=>(form.bridge.Last.EffectFlags&4)!=0);check(true,"UI slow-time command");
     form.ClickView("暂停 / 继续");wait(()=>(form.bridge.Last.EffectFlags&2)!=0);check(true,"UI pause command");
     form.ClickView("隐藏 / 显示 UI");wait(()=>(form.bridge.Last.EffectFlags&1)!=0);check(true,"UI hide command");
@@ -48,6 +57,7 @@ public class ClientForm:PreviewForm {
    }finally{try{if(!host.HasExited)host.Kill();host.WaitForExit(3000);}finally{host.Dispose();}}
    form.Close();
   }}finally{if(File.Exists(temp))File.Delete(temp);if(File.Exists(temp+".bak"))File.Delete(temp+".bak");}
+  var animation=new UiMotion();animation.Start("test",0,1,180);float start=animation.Value("test",1);Thread.Sleep(65);float middle=animation.Value("test",1);check(start<.2&&middle>start&&middle<1,"animation advances between endpoints");float reversed=animation.Value("test",0);check(Math.Abs(reversed-middle)<.15,"rapid retarget preserves current visual position");Thread.Sleep(220);check(animation.Value("test",0)==0&&!animation.Active,"animation settles and needs no idle ticking");
   return checks+" final UI/configuration/live DLL fixture checks passed. No game accessed; user configuration unchanged.\r\n";
  }
  void ApplyKeys(){input.Shortcuts=new HashSet<int>(settings.Bindings.Where(b=>Settings.Shortcut(b.Action)).Select(b=>b.Key));input.Continuous=new HashSet<int>(settings.Bindings.Where(b=>!Settings.Shortcut(b.Action)).Select(b=>b.Key));}
@@ -60,9 +70,19 @@ public class ClientForm:PreviewForm {
  protected override void OnInject(){Inject();}
  void Hotkey(int key,bool ctrl){if(InvokeRequired){BeginInvoke((Action)(()=>Hotkey(key,ctrl)));return;}var binding=settings.Bindings.FirstOrDefault(b=>b.Key==key);if(binding==null)return;uint command=Settings.Command(binding.Action);if(command!=0){if(command==1||command==16||command==128)desiredDirection=null;Command(command);}}
  void Command(uint command){try{if(bridge!=null&&!busy)bridge.Command(command);}catch(Exception e){Log.Write(e.ToString());SetStatus(e.Message);}}
- internal void CommitKey(int index,int key){int previous=settings.Bindings[index].Key;settings.Bindings[index].Key=key;try{settings.Validate();settings.Save(config);}catch{settings.Bindings[index].Key=previous;throw;}ApplyKeys();input.Clear();RefreshKeys();SetStatus("按键已保存并应用");}
+ internal void CommitKey(int index,int key){
+  Binding[] bindings=pendingBindings??settings.Bindings;int previous=bindings[index].Key;bindings[index].Key=key;
+  try{if(pendingBindings!=null)new Settings{Bindings=bindings}.Validate();else{settings.Validate();settings.Save(config);}}
+  catch{bindings[index].Key=previous;throw;}
+  if(pendingBindings==null){ApplyKeys();input.Clear();}RefreshKeys();SetStatus(pendingBindings==null?"按键已保存并应用":"按键已修改，保存后生效");
+ }
  void CaptureKey(){if(page!=1)return;using(var dialog=new KeyDialog()){if(dialog.ShowDialog(this)!=DialogResult.OK)return;CommitKey(selectedKey,dialog.Key);}}
- void Save(){ReadSettingsPage();settings.Validate();settings.Save(config);loadError="";ApplyKeys();input.Clear();SetStatus("设置已保存并应用");}
+ void Save(){
+  Binding[] previous=settings.Bindings;
+  try{ReadSettingsPage();if(page==1&&pendingBindings!=null)settings.Bindings=pendingBindings;settings.Validate();settings.Save(config);}
+  catch{settings.Bindings=previous;throw;}
+  if(page==1)pendingBindings=null;loadError="";ApplyKeys();input.Clear();SetStatus("设置已保存并应用");
+ }
  async void Inject(){
   if(busy)return;
   var games=Process.GetProcessesByName("DarkSoulsIII");if(games.Length!=1){MessageBox.Show(this,"请先启动唯一一个魂3进程并进入场景。");return;}
@@ -94,8 +114,8 @@ public class ClientForm:PreviewForm {
 public static class UiCheck {
  public static void Run(){using(var form=new ClientForm(false)){form.ShowInTaskbar=false;form.Opacity=0;form.Show();Application.DoEvents();Directory.CreateDirectory(Path.Combine(Log.Root,"preview"));for(int i=0;i<6;i++){form.ShowPage(i);Application.DoEvents();using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,new Rectangle(Point.Empty,bitmap.Size));bitmap.Save(Path.Combine(Log.Root,"preview","final-"+i+".png"));}}form.Close();}}
 }
-public class KeyDialog:Form {
- public int Key;public KeyDialog(){Text="录入按键";AutoScaleMode=AutoScaleMode.None;ClientSize=new Size((int)(420*PreviewDpi.Scale),(int)(110*PreviewDpi.Scale));BackColor=Color.FromArgb(17,17,17);ForeColor=Color.FromArgb(238,238,238);Font=new Font("Microsoft YaHei UI",11);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;MinimizeBox=false;StartPosition=FormStartPosition.CenterParent;Controls.Add(new Label{Text="按下新按键，Esc 取消。\n录入小键盘按键前请打开 NumLock。",Dock=DockStyle.Fill,TextAlign=ContentAlignment.MiddleCenter});}
+public class KeyDialog:DarkDialog {
+ public int Key;public KeyDialog():base("录入按键",432,196){KeyPrompt();}
  protected override bool ProcessCmdKey(ref Message msg,Keys keyData){int raw=(int)keyData&255;if(raw==27){DialogResult=DialogResult.Cancel;return true;}if((keyData&(Keys.Control|Keys.Shift|Keys.Alt))!=0||raw==16||raw==17||raw==18)return true;int flags=((msg.LParam.ToInt64()>>24)&1)!=0?1:0;Key=InputCapture.NormalizeKey(raw,flags);DialogResult=DialogResult.OK;return true;}
 }
 public static class Program {

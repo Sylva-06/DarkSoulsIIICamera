@@ -26,7 +26,7 @@
 
 ![默认按键示意图](docs/images/default-keybindings.png)
 
-按键可在程序的“按键设置”中修改。
+按键可在程序的“按键设置”中修改；“恢复默认按键”预览后，点击“保存并应用”生效。
 
 <details>
 <summary>查看文字按键表</summary>

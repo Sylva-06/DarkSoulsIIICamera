@@ -53,7 +53,7 @@ Get-Content .\build\data\ui-self-test.txt
 Start-Process .\build\DS3CameraClient.exe -ArgumentList '--ui-check' -Wait
 ```
 
-输出到 `build/preview/`。`--preview-render` 还会检查最小窗口、多种宽屏和实际最大化布局，并生成 `layout-check.txt`。
+输出到 `build/preview/`。`--preview-render` 还会检查最小窗口、多种宽屏和实际最大化布局，并生成 `layout-check.txt`，另覆盖主窗口紧凑布局与数值/改键弹窗在100%、125%、150%、200%比例下的渲染。
 
 ## 项目目录
 
