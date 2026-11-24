@@ -26,7 +26,9 @@ public class PreviewForm:Form {
  readonly Image mark;
  readonly Image gameWordmark,gameBonfire;
  readonly KeyboardMap map=new KeyboardMap();
- Bitmap bodySurface;
+ Bitmap bodySurface,signatureSurface,markSurface,keyboardSurface;
+ readonly UiTextCache textCache=new UiTextCache();
+ RectangleF hoveredBounds;
  readonly string[] pages={"连接与注入","按键设置","速度与手感","UI、暂停与竖屏","操作说明","注意事项"};
  readonly string[] metric={"相机移动速度","旋转速度","鼠标灵敏度","平滑响应","按住加速倍率","战斗减速倍率"};
  readonly string[] units={"单位 / 秒","弧度 / 秒","","秒","倍","倍"};
@@ -61,9 +63,9 @@ public class PreviewForm:Form {
   mark=LoadImage("camera-icon.png");gameWordmark=LoadImage("game-wordmark.png");gameBonfire=LoadImage("bonfire-symbol.png");
   try{settings=Settings.Load(Path.Combine(Log.Root,"camera-settings.xml"));}catch(Exception e){loadError="配置读取失败，原文件保留："+e.Message;settings=new Settings();}
   map.Visible=false;
-  animationTimer.Interval=16;animationTimer.Tick+=(s,e)=>{Invalidate();if(!motion.Active)animationTimer.Stop();};
-  MouseMove+=(s,e)=>{pointer=new PointF(e.X/scale,e.Y/scale);Cursor=hits.Any(h=>h.Hand&&h.Bounds.Contains(pointer))?Cursors.Hand:Cursors.Default;Invalidate();};
-  MouseLeave+=(s,e)=>{pointer=new PointF(-1,-1);Invalidate();};
+  animationTimer.Interval=15;animationTimer.Tick+=(s,e)=>{Invalidate();if(!motion.Active)animationTimer.Stop();};
+  MouseMove+=(s,e)=>{pointer=new PointF(e.X/scale,e.Y/scale);var hit=hits.LastOrDefault(h=>h.Bounds.Contains(pointer));var bounds=hit==null?RectangleF.Empty:hit.Bounds;Cursor=hit!=null&&hit.Hand?Cursors.Hand:Cursors.Default;if(bounds!=hoveredBounds){hoveredBounds=bounds;Invalidate();}};
+  MouseLeave+=(s,e)=>{pointer=new PointF(-1,-1);if(hoveredBounds!=RectangleF.Empty){hoveredBounds=RectangleF.Empty;Invalidate();}};
   MouseDown+=(s,e)=>{if(e.Button!=MouseButtons.Left)return;float x=e.X/scale,y=e.Y/scale;var hit=hits.LastOrDefault(h=>h.Bounds.Contains(x,y));if(hit!=null){focusIndex=hits.IndexOf(hit);keyboardFocus=false;motion.Start("press:"+hit.Name,1,0,160);animationTimer.Start();RunAction(hit.Action);if(e.Clicks==2&&hit.Name!=null&&hit.Name.StartsWith("按键行:"))RunAction(OnCaptureKey);Invalidate();}else if(y<56){if(e.Clicks==2)ToggleMaximize();else{ReleaseCapture();SendMessage(Handle,0xa1,new IntPtr(2),IntPtr.Zero);}}};
   MouseWheel+=(s,e)=>{if(e.X>D(224)){if(page==1)keyOffset=Math.Max(0,Math.Min(ViewBindings.Length-VisibleRows(),keyOffset+(e.Delta<0?3:-3)));else contentScroll=Math.Max(0,Math.Min(ViewH-H,contentScroll+(e.Delta<0?64:-64)));Invalidate();}};
   Resize+=(s,e)=>{contentScroll=Math.Min(contentScroll,ViewH-H);focusIndex=-1;Invalidate();};
@@ -107,10 +109,10 @@ public class PreviewForm:Form {
  void Rect(Graphics g,Color c,float x,float y,float w,float h){using(var b=new SolidBrush(c))g.FillRectangle(b,x,y,w,h);}
  void Line(Graphics g,float x,float y,float xx,float yy,Color? c=null){using(var p=new Pen(c??Edge,1/scale))g.DrawLine(p,x,y,xx,yy);}
  void TextAt(Graphics g,string text,float x,float y,float width,float height,float size,Color? color=null,bool bold=false,TextFormatFlags extra=0){
-  var matrix=g.Transform.Elements;
+  float[] matrix;using(var transform=g.Transform)matrix=transform.Elements;
   var mapped=new Rectangle((int)Math.Round(x*matrix[0]+matrix[4]),(int)Math.Round(y*matrix[3]+matrix[5]),(int)Math.Round(width*matrix[0]),(int)Math.Round(height*matrix[3]));
-  var saved=g.Save();g.ResetTransform();using(var f=new Font("Microsoft YaHei UI",D(size),bold?FontStyle.Bold:FontStyle.Regular,GraphicsUnit.Pixel))
-   TextRenderer.DrawText(g,text,f,mapped,color??Ink,TextFormatFlags.NoPrefix|TextFormatFlags.NoPadding|TextFormatFlags.VerticalCenter|extra);
+  var saved=g.Save();g.ResetTransform();
+  textCache.Draw(g,text,mapped,D(size),bold,color??Ink,TextFormatFlags.NoPrefix|TextFormatFlags.NoPadding|TextFormatFlags.VerticalCenter|extra);
   g.Restore(saved);
   var textRect=ScreenRect(new RectangleF(x,y,width,height));textBoxes.Add(bodyContext?RectangleF.Intersect(textRect,BodyViewport):textRect);
  }
@@ -162,7 +164,8 @@ public class PreviewForm:Form {
   using(var fade=new LinearGradientBrush(new RectangleF(192,0,56,H-32),Side,Bg,LinearGradientMode.Horizontal))g.FillRectangle(fade,192,0,56,H-32);
   Rect(g,Color.FromArgb(18,18,18),0,H-32,W,32);
   Line(g,0,H-32,W,H-32,Color.FromArgb(28,28,28));
-  if(mark!=null)g.DrawImage(mark,28,12,32,32);
+  if(markSurface==null){markSurface=new Bitmap(D(32),D(32),PixelFormat.Format32bppPArgb);using(var icon=Graphics.FromImage(markSurface)){icon.InterpolationMode=InterpolationMode.HighQualityBicubic;icon.DrawImage(mark,new Rectangle(Point.Empty,markSurface.Size));}}
+  var iconState=g.Save();g.ResetTransform();g.DrawImageUnscaled(markSurface,D(28),D(12));g.Restore(iconState);
   float navPosition=Anim("nav-position",page,180);Rect(g,Accent,16,100+navPosition*56,2,20);
   for(int i=0;i<pages.Length;i++){int n=i;float y=88+i*56;float hover=Anim("hover:nav:"+i,Hover(new RectangleF(16,y,192,44))?1:0,110);if(hover>0)Rect(g,Blend(Side,Color.FromArgb(26,26,26),hover),24,y+2,176,40);
    TextAt(g,pages[i],32,y,176,44,14,Blend(Muted,Ink,Anim("nav-ink:"+i,page==i?1:0,180)));HitAt(new RectangleF(16,y,192,44),()=>ShowPage(n),name:"导航:"+pages[i]);}
@@ -178,7 +181,7 @@ public class PreviewForm:Form {
   map.Visible=false;
   // A bounded content surface keeps native GDI text inside the scrolling viewport.
   int bw=D(BodyViewport.Width),bh=D(BodyViewport.Height);
-  if(bodySurface==null||bodySurface.Width!=bw||bodySurface.Height!=bh){if(bodySurface!=null)bodySurface.Dispose();bodySurface=new Bitmap(bw,bh);}
+  if(bodySurface==null||bodySurface.Width!=bw||bodySurface.Height!=bh){if(bodySurface!=null)bodySurface.Dispose();bodySurface=new Bitmap(bw,bh,PixelFormat.Format32bppPArgb);}
   bodyContext=true;
   using(var body=Graphics.FromImage(bodySurface)){
    body.Clear(Bg);body.SmoothingMode=SmoothingMode.AntiAlias;body.ScaleTransform(scale,scale);body.TranslateTransform(-BodyViewport.X,-BodyViewport.Y+BodyOffset);
@@ -256,7 +259,10 @@ public class PreviewForm:Form {
  void Help(Graphics g){
   float y=152;Rect(g,Accent,X+Anim("help-tab",tab,180)*126,y+40,65,2);
   for(int i=0;i<2;i++){int n=i;float xx=X+i*126;TextAt(g,i==0?"默认按键":"使用流程",xx,y,108,42,14,Blend(Muted,Ink,Anim("help-ink:"+i,tab==i?1:0)));HitAt(new RectangleF(xx,y,108,42),()=>{tab=n;},name:i==0?"默认按键":"使用流程");}
-  if(tab==0){float width=Math.Min(CW,(ViewH-BaseOffset-262)*829/552);float hh=width*552/829;map.SetBounds(D(X+(CW-width)/2),D(220+BodyOffset),D(width),D(hh));var state=g.Save();g.TranslateTransform(X+(CW-width)/2,220);KeyboardMap.Draw(g,(int)width,(int)hh);g.Restore(state);}
+  if(tab==0){float width=Math.Min(CW,(ViewH-BaseOffset-262)*829/552);float hh=width*552/829;map.SetBounds(D(X+(CW-width)/2),D(220+BodyOffset),D(width),D(hh));
+   if(keyboardSurface==null||keyboardSurface.Width!=D(width)||keyboardSurface.Height!=D(hh)){if(keyboardSurface!=null)keyboardSurface.Dispose();keyboardSurface=new Bitmap(D(width),D(hh),PixelFormat.Format32bppPArgb);using(var diagram=Graphics.FromImage(keyboardSurface))KeyboardMap.Draw(diagram,keyboardSurface.Width,keyboardSurface.Height);}
+   var location=new[]{new PointF(X+(CW-width)/2,220)};using(var transform=g.Transform)transform.TransformPoints(location);var state=g.Save();g.ResetTransform();g.DrawImageUnscaled(keyboardSurface,(int)Math.Round(location[0].X),(int)Math.Round(location[0].Y));g.Restore(state);
+  }
   else{
    Section(g,"开始拍摄",228);Body(g,"启动游戏并进入场景 → 注入相机 → 按 Insert 开启镜头。",272);
    Line(g,X,336,X+CW,336);Section(g,"结束拍摄",366);Body(g,"按 Insert 关闭相机，恢复游戏界面与正常时间。",410);
@@ -271,19 +277,23 @@ public class PreviewForm:Form {
  }
  void DrawGameSignature(Graphics g){
   if(H<640)return;
+  if(signatureSurface==null){signatureSurface=new Bitmap(D(224),D(200),PixelFormat.Format32bppPArgb);using(var layer=Graphics.FromImage(signatureSurface)){layer.ScaleTransform(scale,scale);PaintGameSignature(layer,200);}}
+  var state=g.Save();g.ResetTransform();g.DrawImageUnscaled(signatureSurface,0,D(H-200));g.Restore(state);
+ }
+ void PaintGameSignature(Graphics g,float height){
   if(gameBonfire!=null)using(var attributes=new ImageAttributes()){
    // Display only the dark silhouette; the reference file's checkerboard is not transparency.
    attributes.SetColorKey(Color.FromArgb(50,50,50),Color.White);
    var matrix=new ColorMatrix();matrix.Matrix00=matrix.Matrix11=matrix.Matrix22=0;matrix.Matrix40=matrix.Matrix41=matrix.Matrix42=.63f;matrix.Matrix33=.82f;attributes.SetColorMatrix(matrix);
-   g.DrawImage(gameBonfire,new Rectangle(86,(int)(H-188),52,73),250,25,350,490,GraphicsUnit.Pixel,attributes);
+   g.DrawImage(gameBonfire,new Rectangle(86,(int)(height-188),52,73),250,25,350,490,GraphicsUnit.Pixel,attributes);
   }
   if(gameWordmark!=null)using(var attributes=new ImageAttributes()){
    attributes.SetColorKey(Color.Black,Color.FromArgb(24,24,24));
    var matrix=new ColorMatrix();matrix.Matrix00=matrix.Matrix11=matrix.Matrix22=.72f;matrix.Matrix33=.85f;attributes.SetColorMatrix(matrix);
-   g.DrawImage(gameWordmark,new Rectangle(24,(int)(H-96),176,19),19,168,1166,127,GraphicsUnit.Pixel,attributes);
+   g.DrawImage(gameWordmark,new Rectangle(24,(int)(height-96),176,19),19,168,1166,127,GraphicsUnit.Pixel,attributes);
   }
  }
- protected override void Dispose(bool disposing){if(disposing){animationTimer.Stop();animationTimer.Dispose();map.Dispose();if(bodySurface!=null)bodySurface.Dispose();if(mark!=null)mark.Dispose();if(gameWordmark!=null)gameWordmark.Dispose();if(gameBonfire!=null)gameBonfire.Dispose();}base.Dispose(disposing);}
+ protected override void Dispose(bool disposing){if(disposing){animationTimer.Stop();animationTimer.Dispose();map.Dispose();textCache.Dispose();if(keyboardSurface!=null)keyboardSurface.Dispose();if(signatureSurface!=null)signatureSurface.Dispose();if(markSurface!=null)markSurface.Dispose();if(bodySurface!=null)bodySurface.Dispose();if(mark!=null)mark.Dispose();if(gameWordmark!=null)gameWordmark.Dispose();if(gameBonfire!=null)gameBonfire.Dispose();}base.Dispose(disposing);}
  void ValidateLayout(){
   if(CW>960.1f||CW<1||X<224||Math.Abs((X-224)-(W-X-CW))>.1f)throw new InvalidOperationException("Content width or centering failed");
   foreach(var rect in textBoxes.Concat(hits.Select(h=>h.Bounds)).Where(r=>r.Width>0&&r.Height>0))if(rect.Left<0||rect.Top<0||rect.Right>W+.6f||rect.Bottom>H+.6f)throw new InvalidOperationException("Text or interactive area outside viewport: "+rect);
