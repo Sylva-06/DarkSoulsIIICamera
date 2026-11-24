@@ -58,6 +58,7 @@ public class ClientForm:PreviewForm {
    form.Close();
   }}finally{if(File.Exists(temp))File.Delete(temp);if(File.Exists(temp+".bak"))File.Delete(temp+".bak");}
   var animation=new UiMotion();animation.Start("test",0,1,180);float start=animation.Value("test",1);Thread.Sleep(65);float middle=animation.Value("test",1);check(start<.2&&middle>start&&middle<1,"animation advances between endpoints");float reversed=animation.Value("test",0);check(Math.Abs(reversed-middle)<.15,"rapid retarget preserves current visual position");Thread.Sleep(220);check(animation.Value("test",0)==0&&!animation.Active,"animation settles and needs no idle ticking");
+  using(var probe=new RepositoryLinkProbe()){probe.Opacity=0;probe.ShowInTaskbar=false;probe.Show();Application.DoEvents();check(probe.ClickRepository()==PreviewForm.RepositoryUrl,"title click routes to the canonical repository URL");probe.Close();}
   return checks+" final UI/configuration/live DLL fixture checks passed. No game accessed; user configuration unchanged.\r\n";
  }
  void ApplyKeys(){input.Shortcuts=new HashSet<int>(settings.Bindings.Where(b=>Settings.Shortcut(b.Action)).Select(b=>b.Key));input.Continuous=new HashSet<int>(settings.Bindings.Where(b=>!Settings.Shortcut(b.Action)).Select(b=>b.Key));}
@@ -113,6 +114,10 @@ public class ClientForm:PreviewForm {
 }
 public static class UiCheck {
  public static void Run(){using(var form=new ClientForm(false)){form.ShowInTaskbar=false;form.Opacity=0;form.Show();Application.DoEvents();Directory.CreateDirectory(Path.Combine(Log.Root,"preview"));for(int i=0;i<6;i++){form.ShowPage(i);Application.DoEvents();using(var bitmap=new Bitmap(form.Width,form.Height)){form.DrawToBitmap(bitmap,new Rectangle(Point.Empty,bitmap.Size));bitmap.Save(Path.Combine(Log.Root,"preview","final-"+i+".png"));}}form.Close();}}
+}
+sealed class RepositoryLinkProbe:PreviewForm {
+ string opened;protected override void OpenRepository(string url){opened=url;}
+ public string ClickRepository(){ClickView("项目仓库");return opened;}
 }
 public class KeyDialog:DarkDialog {
  public int Key;public KeyDialog():base("录入按键",432,196){KeyPrompt();}

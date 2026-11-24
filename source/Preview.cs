@@ -18,6 +18,8 @@ public class PreviewForm:Form {
  Binding[] ViewBindings{get{return pendingBindings??settings.Bindings;}}
  readonly UiMotion motion=new UiMotion();readonly System.Windows.Forms.Timer animationTimer=new System.Windows.Forms.Timer();
  bool staticRender,keyboardFocus;
+ public const string RepositoryUrl="https://github.com/Sylva-06/DarkSoulsIIICamera";
+ readonly ToolTip repositoryTip=new ToolTip{InitialDelay=400,ReshowDelay=100,AutoPopDelay=3000};
  protected string loadError="";
  protected string processText="尚未检测到游戏进程",message="未连接";
  protected bool gameAvailable,connected,injectionBusy;
@@ -64,8 +66,8 @@ public class PreviewForm:Form {
   try{settings=Settings.Load(Path.Combine(Log.Root,"camera-settings.xml"));}catch(Exception e){loadError="配置读取失败，原文件保留："+e.Message;settings=new Settings();}
   map.Visible=false;
   animationTimer.Interval=15;animationTimer.Tick+=(s,e)=>{Invalidate();if(!motion.Active)animationTimer.Stop();};
-  MouseMove+=(s,e)=>{pointer=new PointF(e.X/scale,e.Y/scale);var hit=hits.LastOrDefault(h=>h.Bounds.Contains(pointer));var bounds=hit==null?RectangleF.Empty:hit.Bounds;Cursor=hit!=null&&hit.Hand?Cursors.Hand:Cursors.Default;if(bounds!=hoveredBounds){hoveredBounds=bounds;Invalidate();}};
-  MouseLeave+=(s,e)=>{pointer=new PointF(-1,-1);if(hoveredBounds!=RectangleF.Empty){hoveredBounds=RectangleF.Empty;Invalidate();}};
+  MouseMove+=(s,e)=>{pointer=new PointF(e.X/scale,e.Y/scale);var hit=hits.LastOrDefault(h=>h.Bounds.Contains(pointer));var bounds=hit==null?RectangleF.Empty:hit.Bounds;Cursor=hit!=null&&hit.Hand?Cursors.Hand:Cursors.Default;if(bounds!=hoveredBounds){hoveredBounds=bounds;repositoryTip.SetToolTip(this,hit!=null&&hit.Name=="项目仓库"?"打开 GitHub 仓库":null);Invalidate();}};
+  MouseLeave+=(s,e)=>{repositoryTip.SetToolTip(this,null);pointer=new PointF(-1,-1);if(hoveredBounds!=RectangleF.Empty){hoveredBounds=RectangleF.Empty;Invalidate();}};
   MouseDown+=(s,e)=>{if(e.Button!=MouseButtons.Left)return;float x=e.X/scale,y=e.Y/scale;var hit=hits.LastOrDefault(h=>h.Bounds.Contains(x,y));if(hit!=null){focusIndex=hits.IndexOf(hit);keyboardFocus=false;motion.Start("press:"+hit.Name,1,0,160);animationTimer.Start();RunAction(hit.Action);if(e.Clicks==2&&hit.Name!=null&&hit.Name.StartsWith("按键行:"))RunAction(OnCaptureKey);Invalidate();}else if(y<56){if(e.Clicks==2)ToggleMaximize();else{ReleaseCapture();SendMessage(Handle,0xa1,new IntPtr(2),IntPtr.Zero);}}};
   MouseWheel+=(s,e)=>{if(e.X>D(224)){if(page==1)keyOffset=Math.Max(0,Math.Min(ViewBindings.Length-VisibleRows(),keyOffset+(e.Delta<0?3:-3)));else contentScroll=Math.Max(0,Math.Min(ViewH-H,contentScroll+(e.Delta<0?64:-64)));Invalidate();}};
   Resize+=(s,e)=>{contentScroll=Math.Min(contentScroll,ViewH-H);focusIndex=-1;Invalidate();};
@@ -74,6 +76,7 @@ public class PreviewForm:Form {
  static Image LoadImage(string name){using(var stream=typeof(PreviewForm).Assembly.GetManifestResourceStream("DS3Camera."+name)){if(stream==null)throw new FileNotFoundException("缺少界面资源",name);using(var image=Image.FromStream(stream))return new Bitmap(image);}}
  void RunAction(Action action){try{action();}catch(Exception e){MessageBox.Show(this,e.Message,"操作未完成",MessageBoxButtons.OK,MessageBoxIcon.Information);}}
  protected virtual void OnInject(){} protected virtual void OnDisconnect(){} protected virtual void OnCommand(uint command){} protected virtual void OnRefresh(){} protected virtual void OnSave(){} protected virtual void OnCaptureKey(){} protected virtual void OnDirection(int index){}
+ protected virtual void OpenRepository(string url){System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url){UseShellExecute=true});}
  protected void SetStatus(string text){if(message==text)return;message=text;Invalidate();}
  protected void RefreshKeys(){Invalidate();}
  protected void ReadSettingsPage(){
@@ -171,7 +174,9 @@ public class PreviewForm:Form {
    TextAt(g,pages[i],32,y,176,44,14,Blend(Muted,Ink,Anim("nav-ink:"+i,page==i?1:0,180)));HitAt(new RectangleF(16,y,192,44),()=>ShowPage(n),name:"导航:"+pages[i]);}
   DrawGameSignature(g);
   const string product="Dark Souls III Camera";
-  TextAt(g,product,76,14,240,28,14,Ink);
+  var titleBounds=new RectangleF(72,8,248,40);
+  TextAt(g,product,76,14,240,28,14,Blend(Ink,Color.White,Anim("hover:repository",Hover(titleBounds)?1:0,110)));
+  HitAt(titleBounds,()=>OpenRepository(RepositoryUrl),name:"项目仓库");
 
   TopButton(g,"—",W-138,()=>WindowState=FormWindowState.Minimized);
   TopButton(g,"□",W-92,ToggleMaximize);
@@ -281,19 +286,29 @@ public class PreviewForm:Form {
   var state=g.Save();g.ResetTransform();g.DrawImageUnscaled(signatureSurface,0,D(H-200));g.Restore(state);
  }
  void PaintGameSignature(Graphics g,float height){
-  if(gameBonfire!=null)using(var attributes=new ImageAttributes()){
-   // Display only the dark silhouette; the reference file's checkerboard is not transparency.
-   attributes.SetColorKey(Color.FromArgb(50,50,50),Color.White);
-   var matrix=new ColorMatrix();matrix.Matrix00=matrix.Matrix11=matrix.Matrix22=0;matrix.Matrix40=matrix.Matrix41=matrix.Matrix42=.63f;matrix.Matrix33=.82f;attributes.SetColorMatrix(matrix);
-   g.DrawImage(gameBonfire,new Rectangle(86,(int)(height-188),52,73),250,25,350,490,GraphicsUnit.Pixel,attributes);
+  const float gray=.68f,opacity=.88f;
+  // Colour the prepared silhouette, preserving its edge alpha; reused in the signature layer.
+  using(var flame=new Bitmap(D(52),D(73),PixelFormat.Format32bppPArgb)){
+   using(var canvas=Graphics.FromImage(flame))using(var attributes=new ImageAttributes()){
+    attributes.SetColorKey(Color.FromArgb(50,50,50),Color.White);var matrix=new ColorMatrix();matrix.Matrix00=matrix.Matrix11=matrix.Matrix22=0;
+    matrix.Matrix40=matrix.Matrix41=matrix.Matrix42=gray;matrix.Matrix33=opacity;attributes.SetColorMatrix(matrix);
+    canvas.DrawImage(gameBonfire,new Rectangle(0,0,flame.Width,flame.Height),250,25,350,490,GraphicsUnit.Pixel,attributes);
+   }
+   for(int y=0;y<flame.Height;y++){
+    float row=y*73f/flame.Height,blend=Math.Max(0,Math.Min(1,(row-27)/14f))*Math.Max(0,Math.Min(1,(58-row)/9f))*.85f;
+    if(blend==0)continue;
+    for(int x=0;x<flame.Width;x++){Color c=flame.GetPixel(x,y);if(c.A==0)continue;
+     flame.SetPixel(x,y,Color.FromArgb(c.A,Math.Min(255,(int)(c.R*(gray+(.69f-gray)*blend)/gray)),Math.Min(255,(int)(c.G*(gray+(.36f-gray)*blend)/gray)),Math.Min(255,(int)(c.B*(gray+(.20f-gray)*blend)/gray))));
+    }
+   }
+   g.DrawImage(flame,new RectangleF(86,height-182,52,73));
   }
-  if(gameWordmark!=null)using(var attributes=new ImageAttributes()){
-   attributes.SetColorKey(Color.Black,Color.FromArgb(24,24,24));
-   var matrix=new ColorMatrix();matrix.Matrix00=matrix.Matrix11=matrix.Matrix22=.72f;matrix.Matrix33=.85f;attributes.SetColorMatrix(matrix);
-   g.DrawImage(gameWordmark,new Rectangle(24,(int)(height-96),176,19),19,168,1166,127,GraphicsUnit.Pixel,attributes);
+  using(var attributes=new ImageAttributes()){
+   attributes.SetColorKey(Color.Black,Color.FromArgb(24,24,24));var matrix=new ColorMatrix();matrix.Matrix00=matrix.Matrix11=matrix.Matrix22=.72f;matrix.Matrix33=.85f;attributes.SetColorMatrix(matrix);
+   g.DrawImage(gameWordmark,new Rectangle(36,(int)(height-95),152,17),19,168,1166,127,GraphicsUnit.Pixel,attributes);
   }
  }
- protected override void Dispose(bool disposing){if(disposing){animationTimer.Stop();animationTimer.Dispose();map.Dispose();textCache.Dispose();if(keyboardSurface!=null)keyboardSurface.Dispose();if(signatureSurface!=null)signatureSurface.Dispose();if(markSurface!=null)markSurface.Dispose();if(bodySurface!=null)bodySurface.Dispose();if(mark!=null)mark.Dispose();if(gameWordmark!=null)gameWordmark.Dispose();if(gameBonfire!=null)gameBonfire.Dispose();}base.Dispose(disposing);}
+ protected override void Dispose(bool disposing){if(disposing){animationTimer.Stop();animationTimer.Dispose();repositoryTip.Dispose();map.Dispose();textCache.Dispose();if(keyboardSurface!=null)keyboardSurface.Dispose();if(signatureSurface!=null)signatureSurface.Dispose();if(markSurface!=null)markSurface.Dispose();if(bodySurface!=null)bodySurface.Dispose();if(mark!=null)mark.Dispose();if(gameWordmark!=null)gameWordmark.Dispose();if(gameBonfire!=null)gameBonfire.Dispose();}base.Dispose(disposing);}
  void ValidateLayout(){
   if(CW>960.1f||CW<1||X<224||Math.Abs((X-224)-(W-X-CW))>.1f)throw new InvalidOperationException("Content width or centering failed");
   foreach(var rect in textBoxes.Concat(hits.Select(h=>h.Bounds)).Where(r=>r.Width>0&&r.Height>0))if(rect.Left<0||rect.Top<0||rect.Right>W+.6f||rect.Bottom>H+.6f)throw new InvalidOperationException("Text or interactive area outside viewport: "+rect);
